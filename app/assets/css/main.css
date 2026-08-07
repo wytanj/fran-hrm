@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-cream text-ink font-body antialiased;
+  }
+}
+
+@layer components {
+  /* Uppercase kicker above every page title (fran-mobile eyebrow token) */
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[1.4px] text-muted;
+  }
+  .h1-display {
+    @apply font-display font-bold text-[28px] leading-8 tracking-tight text-ink;
+  }
+  /* Uniform tap feedback: everything presses with the same small scale */
+  .press {
+    @apply transition-transform duration-100 active:scale-[.975];
+  }
+  .press-lg {
+    @apply transition-transform duration-100 active:scale-[.99];
+  }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "@fran/hrm-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "FranHRM MCP server — HR, scheduling and time & attendance tools for agents (stdio + remote HTTP).",
+  "bin": {
+    "fran-hrm-mcp": "./src/index.mjs"
+  }
+}
