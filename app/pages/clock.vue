@@ -9,7 +9,10 @@
         <div class="rounded-lg border border-line-soft bg-white p-5 shadow-warm-sm">
           <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p class="eyebrow">{{ status?.on_break ? 'On break' : status?.open_entry ? 'Clocked in' : 'Off the clock' }}</p>
+              <p class="eyebrow flex items-center gap-1.5">
+                {{ status?.on_break ? 'On break' : status?.open_entry ? 'Clocked in' : 'Off the clock' }}
+                <UiSpinner v-if="statusPending" size="xs" />
+              </p>
               <p class="mt-0.5 font-display text-[38px] font-bold leading-[42px] tabular-nums tracking-tight text-ink">{{ clockFace }}</p>
               <p v-if="status?.open_entry" class="text-[12.5px] text-muted">
                 In since {{ fmtTime(status.open_entry.clock_in_at) }}
@@ -161,7 +164,7 @@ const route = useRoute()
 
 const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
 
-const { data: statusRes, refresh: refreshStatus } = await useFetch<any>('/api/v1/clock/status')
+const { data: statusRes, refresh: refreshStatus, pending: statusPending } = await useFetch<any>('/api/v1/clock/status')
 const status = computed<any>(() => statusRes.value?.data)
 
 const { data: historyRes, refresh: refreshHistory } = await useFetch<any>('/api/v1/time-entries', {

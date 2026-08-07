@@ -26,6 +26,9 @@ export default defineNuxtConfig({
     },
   },
   app: {
+    // Short cross-fade. `out-in` avoids the two pages overlapping, and 120ms is
+    // long enough to read as intentional without adding perceptible delay.
+    pageTransition: { name: 'page', mode: 'out-in' },
     head: {
       title: 'FranHRM',
       meta: [

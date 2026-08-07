@@ -3,8 +3,12 @@
     <UiPageHeader eyebrow="Help centre" title="How things work"
       subtitle="The current policy for clocking, rosters, leave, overtime and payroll. Claude reads this same content.">
       <template #actions>
-        <input v-model="query" placeholder="Search — e.g. forgot to clock out"
-          class="h-9 w-72 rounded-md border border-line bg-white px-3 text-[13px]">
+        <div class="relative">
+          <input v-model="query" placeholder="Search — e.g. forgot to clock out"
+            class="h-9 w-72 rounded-md border border-line bg-white px-3 pr-9 text-[13px]">
+          <UiSpinner v-if="searching" size="xs"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
+        </div>
       </template>
     </UiPageHeader>
 
@@ -68,7 +72,7 @@ const query = ref('')
 const { data: listRes } = await useFetch<any>('/api/v1/help')
 const articles = computed<any[]>(() => listRes.value?.data || [])
 
-const { data: searchRes } = await useFetch<any>('/api/v1/help', {
+const { data: searchRes, pending: searching } = await useFetch<any>('/api/v1/help', {
   query: computed(() => ({ q: query.value.trim().length > 1 ? query.value : undefined })),
   watch: [query], server: false,
 })

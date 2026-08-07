@@ -27,6 +27,7 @@
           </div>
         </div>
 
+        <UiBusy :busy="requestsPending" label="Loading…">
         <UiTable :columns="columns">
           <tr v-for="r in requests" :key="r.id" class="border-b border-line-soft last:border-0 hover:bg-surface-sunken/50">
             <td v-if="isManager" class="px-3.5 py-2.5 font-semibold text-ink">{{ r.staff?.display_name }}</td>
@@ -51,6 +52,7 @@
             <td :colspan="columns.length" class="px-3.5 py-8 text-center text-[13px] text-muted">No {{ tab }} requests.</td>
           </tr>
         </UiTable>
+        </UiBusy>
       </div>
 
       <!-- Apply form -->
@@ -114,7 +116,7 @@ const { data: balancesRes, refresh: refreshBalances } = await useFetch<any>('/ap
 const balances = computed<any[]>(() => balancesRes.value?.data || [])
 
 const tab = ref('pending')
-const { data: requestsRes, refresh: refreshRequests } = await useFetch<any>('/api/v1/leave/requests', {
+const { data: requestsRes, refresh: refreshRequests, pending: requestsPending } = await useFetch<any>('/api/v1/leave/requests', {
   query: computed(() => ({ status: tab.value })), watch: [tab],
 })
 const requests = computed<any[]>(() => requestsRes.value?.data || [])

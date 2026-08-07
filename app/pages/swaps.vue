@@ -17,6 +17,7 @@
           </div>
         </div>
 
+        <UiBusy :busy="pending" label="Loading…">
         <UiTable :columns="[
           { key: 'shift', label: 'Shift' },
           { key: 'from', label: 'From' },
@@ -47,6 +48,7 @@
             <td colspan="6" class="px-3.5 py-8 text-center text-[13px] text-muted">No swap requests.</td>
           </tr>
         </UiTable>
+        </UiBusy>
       </div>
 
       <div>
@@ -115,7 +117,7 @@ const { data: staffRes } = await useFetch<any>('/api/v1/staff', {
 const teammates = computed<any[]>(() =>
   (staffRes.value?.data || []).filter((m: any) => m.id !== staff.value?.id))
 
-const { data: swapsRes, refresh } = await useFetch<any>('/api/v1/swaps', {
+const { data: swapsRes, refresh, pending } = await useFetch<any>('/api/v1/swaps', {
   query: computed(() => ({ status: statusFilter.value || undefined })), watch: [statusFilter],
 })
 const swaps = computed<any[]>(() => swapsRes.value?.data || [])

@@ -4,9 +4,12 @@
       :subtitle="`Tell your manager when you can work. Changes lock ${cutoffDays} days ahead so the roster can be planned.`">
       <template #actions>
         <div class="flex items-center gap-1 rounded-md border border-line bg-white">
-          <button class="press h-9 w-8 text-brown" aria-label="Previous week" @click="shiftWeek(-7)">‹</button>
-          <span class="min-w-[128px] px-1 text-center text-[12.5px] font-semibold tabular-nums">{{ weekLabel }}</span>
-          <button class="press h-9 w-8 text-brown" aria-label="Next week" @click="shiftWeek(7)">›</button>
+          <button class="press h-9 w-8 text-brown disabled:opacity-40" :disabled="pending" aria-label="Previous week" @click="shiftWeek(-7)">‹</button>
+          <span class="flex min-w-[128px] items-center justify-center gap-1.5 px-1 text-center text-[12.5px] font-semibold tabular-nums">
+            <UiSpinner v-if="pending" size="xs" />
+            {{ weekLabel }}
+          </span>
+          <button class="press h-9 w-8 text-brown disabled:opacity-40" :disabled="pending" aria-label="Next week" @click="shiftWeek(7)">›</button>
         </div>
         <UiButton size="sm" :loading="saving" @click="save">Submit availability</UiButton>
       </template>
@@ -110,7 +113,7 @@ interface DayRow {
 }
 const days = ref<DayRow[]>([])
 
-const { data: availRes, refresh } = await useFetch<any>('/api/v1/availability', {
+const { data: availRes, refresh, pending } = await useFetch<any>('/api/v1/availability', {
   query: computed(() => ({ from: weekStart.value, to: addDays(weekStart.value, 6) })),
   watch: [weekStart],
 })

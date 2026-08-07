@@ -25,6 +25,50 @@
   }
 }
 
+/* Page cross-fade. Kept short: a transition long enough to notice is a
+   transition long enough to annoy on the twentieth navigation. */
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(3px);
+}
+.page-leave-to {
+  opacity: 0;
+}
+
+/* Generic fade, used by loading overlays. */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 150ms ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* Skeleton shimmer, in the warm palette rather than the usual grey. */
+.skeleton {
+  background: linear-gradient(90deg, #F4EDDF 25%, #FBF7EE 50%, #F4EDDF 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter-active,
+  .page-leave-active,
+  .fade-enter-active,
+  .fade-leave-active { transition: none; }
+  .skeleton { animation: none; }
+}
+
 @media print {
   .no-print { display: none !important; }
   body { background: white; }

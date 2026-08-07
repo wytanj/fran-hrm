@@ -25,15 +25,20 @@
           :key="item.to"
           :to="item.to"
           class="press mb-0.5 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13.5px] font-medium"
-          :class="isActive(item.to)
+          :class="isActive(item.to) || isNavigatingTo(item.to)
             ? 'bg-yellow-soft font-semibold text-brown'
             : 'text-ink-soft hover:bg-surface-sunken'"
           @click="$emit('close')"
         >
-          <span class="w-4 text-center text-[13px]">{{ item.icon }}</span>
+          <span class="w-4 text-center text-[13px]">
+            <!-- Swap the icon for a spinner on the tab being opened, so the
+                 click is acknowledged before the page renders. -->
+            <UiSpinner v-if="isNavigatingTo(item.to)" size="xs" />
+            <template v-else>{{ item.icon }}</template>
+          </span>
           <span class="flex-1">{{ item.label }}</span>
           <span
-            v-if="item.count"
+            v-if="item.count && !isNavigatingTo(item.to)"
             class="rounded-full bg-brown px-1.5 py-0.5 text-[10px] font-bold text-yellow"
           >{{ item.count }}</span>
         </NuxtLink>
@@ -64,6 +69,7 @@ defineEmits(['close'])
 
 const route = useRoute()
 const { staff, isSupervisor, isManager, isAreaManager } = useSession()
+const { isNavigatingTo } = useNavigating()
 
 // Pending-approval counts drive the sidebar badges — the point of a desk tool
 // is seeing what needs you without hunting for it.

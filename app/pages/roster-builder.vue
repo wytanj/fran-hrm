@@ -340,7 +340,9 @@ Dylan     OFF        Opening</pre>
               <button v-for="f in exportFormats" :key="f.key"
                 class="press rounded-md border border-line bg-white px-3 py-1.5 text-[12.5px] font-semibold text-brown"
                 :class="exportFormat === f.key ? 'border-yellow-deep bg-yellow-soft' : ''"
+                :disabled="exporting"
                 @click="runExport(f.key)">
+                <UiSpinner v-if="exporting && exportFormat === f.key" size="xs" class="mr-1.5" />
                 {{ f.label }}
               </button>
             </div>
@@ -613,6 +615,7 @@ const exportFormats = [
 const exportFormat = ref('')
 const exportOut = ref<any>(null)
 const copied = ref(false)
+const exporting = ref(false)
 
 const { data: rosterRes } = await useFetch<any>('/api/v1/rosters', {
   query: computed(() => ({ store_id: storeId.value, week_start: weekStart.value })),
@@ -624,6 +627,7 @@ async function runExport(format: string) {
   exportFormat.value = format
   exportOut.value = null
   error.value = ''
+  exporting.value = true
   try {
     const r: any = await $fetch(`/api/v1/rosters/${currentRoster.value.id}/export`, {
       query: { format, download: 'false' },
@@ -636,7 +640,7 @@ async function runExport(format: string) {
     }
   } catch (err: any) {
     error.value = err?.data?.message || err?.data?.statusMessage || 'Could not export'
-  }
+  } finally { exporting.value = false }
 }
 
 async function copyExport() {

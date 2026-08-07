@@ -26,6 +26,7 @@
       <UiStat label="Managers" :value="stats.managers" hint="Supervisor and above" />
     </div>
 
+    <UiBusy :busy="pending" label="Loading team…">
     <UiTable :columns="columns">
       <tr v-for="m in team" :key="m.id" class="border-b border-line-soft last:border-0 hover:bg-surface-sunken/50">
         <td class="px-3.5 py-2.5">
@@ -66,6 +67,7 @@
         <td :colspan="columns.length" class="px-3.5 py-8 text-center text-[13px] text-muted">No staff match those filters.</td>
       </tr>
     </UiTable>
+    </UiBusy>
 
     <p class="mt-2 text-[11.5px] text-muted">
       Adding or editing staff requires an area manager and is done via the API — see the project README.
@@ -83,7 +85,7 @@ const search = ref('')
 const typeFilter = ref('')
 const statusFilter = ref('active')
 
-const { data: res } = await useFetch<any>('/api/v1/staff', {
+const { data: res, pending } = await useFetch<any>('/api/v1/staff', {
   query: computed(() => ({
     limit: 100,
     search: search.value || undefined,

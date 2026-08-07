@@ -8,9 +8,14 @@
           <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.name }}</option>
         </select>
         <div class="flex items-center gap-1 rounded-md border border-line bg-white">
-          <button class="press h-9 w-8 text-brown" aria-label="Previous week" @click="shiftWeek(-7)">‹</button>
-          <span class="min-w-[128px] px-1 text-center text-[12.5px] font-semibold tabular-nums">{{ weekLabel }}</span>
-          <button class="press h-9 w-8 text-brown" aria-label="Next week" @click="shiftWeek(7)">›</button>
+          <button class="press h-9 w-8 text-brown disabled:opacity-40" :disabled="pending"
+            aria-label="Previous week" @click="shiftWeek(-7)">‹</button>
+          <span class="flex min-w-[128px] items-center justify-center gap-1.5 px-1 text-center text-[12.5px] font-semibold tabular-nums">
+            <UiSpinner v-if="pending" size="xs" />
+            {{ weekLabel }}
+          </span>
+          <button class="press h-9 w-8 text-brown disabled:opacity-40" :disabled="pending"
+            aria-label="Next week" @click="shiftWeek(7)">›</button>
         </div>
         <button v-if="weekStart !== thisMonday" class="press h-9 rounded-md border border-line bg-white px-3 text-[12.5px] font-semibold text-brown" @click="weekStart = thisMonday">
           This week
@@ -84,7 +89,9 @@
     </div>
 
     <!-- Empty state / draft creation -->
-    <div v-if="!roster && !pending" class="rounded-lg border border-line-soft bg-white p-8 text-center shadow-warm-sm">
+    <UiTableSkeleton v-if="pending && !roster" :rows="5" :columns="8" />
+
+    <div v-else-if="!roster && !pending" class="rounded-lg border border-line-soft bg-white p-8 text-center shadow-warm-sm">
       <p class="font-display text-[19px] font-bold text-ink">No roster for {{ weekLabel }}</p>
       <p class="mx-auto mt-1 max-w-md text-[13px] text-muted">
         {{ isManager ? 'Start from scratch, or copy the previous week and adjust.' : "Your manager hasn't published this week yet." }}
@@ -96,7 +103,8 @@
     </div>
 
     <!-- ===== Desktop matrix: staff rows × day columns ===== -->
-    <div v-else-if="roster" class="hidden overflow-x-auto rounded-lg border border-line-soft bg-white shadow-warm-sm md:block">
+    <UiBusy v-else-if="roster" :busy="pending" label="Loading week…">
+    <div class="hidden overflow-x-auto rounded-lg border border-line-soft bg-white shadow-warm-sm md:block">
       <table class="w-full min-w-[900px] border-collapse text-left">
         <thead>
           <tr class="border-b border-line bg-surface-sunken/60">
@@ -150,6 +158,7 @@
         </tbody>
       </table>
     </div>
+    </UiBusy>
 
     <!-- ===== Mobile: day-by-day list ===== -->
     <div v-if="roster" class="space-y-3 md:hidden">

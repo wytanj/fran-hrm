@@ -38,6 +38,7 @@
         <UiStat v-else label="Incomplete entries" :value="incomplete" :tone="incomplete ? 'warning' : 'ink'" hint="Missing clock-out" />
       </div>
 
+      <UiBusy :busy="hoursPending" label="Recalculating…">
       <UiTable :columns="hoursColumns">
         <tr v-for="r in summary?.rows || []" :key="r.staff_id" class="border-b border-line-soft last:border-0 hover:bg-surface-sunken/50">
           <td class="px-3.5 py-2.5">
@@ -71,6 +72,7 @@
           </td>
         </tr>
       </UiTable>
+      </UiBusy>
       <p class="mt-2 text-[11.5px] text-muted">
         Hours are net of breaks. Overtime is flagged for review, never auto-paid — see
         <NuxtLink to="/help/overtime-and-hours" class="font-semibold text-brown underline decoration-brown/30">how hours are calculated</NuxtLink>.
@@ -79,6 +81,7 @@
 
     <!-- ===== FLAGS ===== -->
     <template v-if="tab === 'flags'">
+      <UiBusy :busy="flagsPending" label="Loading flags…">
       <UiTable :columns="[
         { key: 'type', label: 'Flag', width: '140px' },
         { key: 'staff', label: 'Staff' },
@@ -105,6 +108,7 @@
           </td>
         </tr>
       </UiTable>
+      </UiBusy>
     </template>
 
     <!-- ===== CORRECTIONS ===== -->
@@ -236,13 +240,13 @@ const stores = computed<any[]>(() => (storesRes.value?.data || []).filter((s: an
 
 const query = computed(() => ({ from: from.value, to: to.value, store_id: storeId.value || undefined }))
 
-const { data: hoursRes } = await useFetch<any>('/api/v1/reports/hours', { query, watch: [from, to, storeId] })
+const { data: hoursRes, pending: hoursPending } = await useFetch<any>('/api/v1/reports/hours', { query, watch: [from, to, storeId] })
 const summary = computed<any>(() => hoursRes.value?.data)
 
-const { data: flagsRes, refresh: refreshFlags } = await useFetch<any>('/api/v1/flags', { query, watch: [from, to, storeId] })
+const { data: flagsRes, refresh: refreshFlags, pending: flagsPending } = await useFetch<any>('/api/v1/flags', { query, watch: [from, to, storeId] })
 const flags = computed<any[]>(() => flagsRes.value?.data || [])
 
-const { data: corrRes, refresh: refreshCorr } = await useFetch<any>('/api/v1/corrections')
+const { data: corrRes, refresh: refreshCorr, pending: corrPending } = await useFetch<any>('/api/v1/corrections')
 const corrections = computed<any[]>(() => corrRes.value?.data || [])
 
 const { data: payRes, refresh: refreshPay } = await useFetch<any>('/api/v1/pay-periods', { default: () => ({ data: [] }) })
