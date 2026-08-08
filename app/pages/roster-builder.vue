@@ -180,11 +180,11 @@
           <table class="w-full min-w-[760px] text-left text-[12.5px]">
             <thead>
               <tr class="border-b border-line bg-surface-sunken/60 text-[10.5px] uppercase tracking-[0.5px] text-muted">
-                <th v-for="h in proposal.grid.header" :key="h" class="px-2.5 py-2 first:pl-3.5">{{ h }}</th>
+                <th v-for="h in proposal.table.header" :key="h" class="px-2.5 py-2 first:pl-3.5">{{ h }}</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(r, i) in proposal.grid.rows" :key="i" class="border-b border-line-soft last:border-0">
+              <tr v-for="(r, i) in proposal.table.rows" :key="i" class="border-b border-line-soft last:border-0">
                 <td v-for="(c, ci) in r" :key="ci" class="px-2.5 py-1.5 first:pl-3.5 tabular-nums"
                   :class="c === 'OFF' ? 'text-line-strong' : ci < 2 ? 'font-semibold' : ''">{{ c }}</td>
               </tr>
