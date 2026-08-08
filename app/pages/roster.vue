@@ -20,6 +20,12 @@
         <button v-if="weekStart !== thisMonday" class="press h-9 rounded-md border border-line bg-white px-3 text-[12.5px] font-semibold text-brown" @click="weekStart = thisMonday">
           This week
         </button>
+        <button v-if="isSupervisor && roster" type="button"
+          class="no-print press h-9 rounded-md border px-3 text-[12.5px] font-semibold text-brown"
+          :class="showHistory ? 'border-yellow-deep bg-yellow-soft' : 'border-line bg-white'"
+          @click="toggleHistory">
+          History
+        </button>
         <button class="no-print press h-9 rounded-md border border-line bg-white px-3 text-[12.5px] font-semibold text-brown" @click="print">
           Print
         </button>
@@ -86,6 +92,60 @@
           <UiButton size="sm" class="w-full" :loading="busy" @click="addShift">Add</UiButton>
         </div>
       </div>
+      <label class="mt-3 block">
+        <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Reason (optional — recorded in the change history)</span>
+        <input v-model="newShift.reason" placeholder="e.g. covering Dylan's approved leave"
+          class="h-9 w-full rounded-md border border-line bg-white px-2.5 text-[13px]">
+      </label>
+    </div>
+
+    <!-- Removal confirm: two-step so a reason can be captured for the trail -->
+    <div v-if="pendingRemoval" class="no-print mb-4 rounded-lg border border-danger/40 bg-danger-soft p-3.5">
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="min-w-[200px] flex-1">
+          <p class="text-[12.5px] font-semibold text-danger">Remove this shift?</p>
+          <p class="text-[12px] text-ink-soft">
+            {{ pendingRemoval.staff?.display_name || 'Open shift' }} · {{ pendingRemoval.work_date }} ·
+            {{ fmtTime(pendingRemoval.start_at) }}–{{ fmtTime(pendingRemoval.end_at) }}
+          </p>
+        </div>
+        <input v-model="removalReason" placeholder="Reason (optional)"
+          class="h-9 w-64 rounded-md border border-line bg-white px-2.5 text-[13px]">
+        <UiButton size="sm" variant="secondary" :loading="busy" @click="cancelRemoval">Cancel</UiButton>
+        <UiButton size="sm" :loading="busy" @click="confirmRemoval">Remove shift</UiButton>
+      </div>
+    </div>
+
+    <!-- Change history timeline -->
+    <div v-if="showHistory && roster" class="no-print mb-4 overflow-hidden rounded-lg border border-line bg-white shadow-warm-xs">
+      <div class="flex items-center gap-2 border-b border-line-soft px-4 py-2.5">
+        <p class="font-display text-[14px] font-bold text-ink">Change history</p>
+        <span v-if="history" class="text-[11.5px] text-muted">{{ history.total }} event(s)</span>
+        <UiSpinner v-if="historyLoading" size="xs" class="ml-1" />
+        <button class="press ml-auto text-[12px] font-semibold text-brown" @click="showHistory = false">Hide</button>
+      </div>
+      <div v-if="historyDenied" class="px-4 py-5 text-[12.5px] text-muted">
+        You don't have permission to view roster history. Ask an admin to grant “View roster change history” for your role.
+      </div>
+      <div v-else-if="history && !history.events.length && !historyLoading" class="px-4 py-5 text-[12.5px] text-muted">
+        No changes recorded for this week yet. Adjustments will appear here — who changed what, when, and why.
+      </div>
+      <ul v-else-if="history" class="divide-y divide-line-soft">
+        <li v-for="ev in history.events" :key="ev.id" class="flex gap-3 px-4 py-2.5">
+          <span class="mt-0.5 w-[104px] shrink-0 text-[11px] tabular-nums text-muted">{{ fmtDateTime(ev.at) }}</span>
+          <div class="min-w-0 flex-1">
+            <p class="text-[12.5px] text-ink">{{ ev.summary }}</p>
+            <p v-if="ev.reason" class="text-[11.5px] text-ink-soft">Reason: {{ ev.reason }}</p>
+            <p class="text-[11px] text-muted">
+              {{ ev.actor_name }}
+              <span v-if="ev.source === 'mcp'" class="text-brown"> · via Claude</span>
+              <span v-else-if="ev.source === 'api'" class="text-brown"> · via API</span>
+            </p>
+          </div>
+          <span class="mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.3px]"
+            :class="badgeClass(ev.operation)">{{ opLabel(ev.operation) }}</span>
+        </li>
+      </ul>
     </div>
 
     <!-- Empty state / draft creation -->
@@ -185,7 +245,7 @@
 </template>
 
 <script setup lang="ts">
-const { staff, isManager } = useSession()
+const { staff, isManager, isSupervisor } = useSession()
 
 const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
 const thisMonday = mondayOf(today)
@@ -195,31 +255,43 @@ const error = ref('')
 const busy = ref(false)
 const showAdd = ref(false)
 
-const { data: storesRes } = await useFetch<any>('/api/v1/stores')
+// These four are independent — fire them together. As four sequential
+// top-level awaits they were four serial SSR round trips, each re-running
+// session auth; Promise.all keeps the server-rendered data but overlaps the
+// latency (this is what made /roster feel slow with no data).
+const [{ data: storesRes }, { data: rosterRes, refresh, pending }, { data: templatesRes }, { data: membersRes }] =
+  await Promise.all([
+    useFetch<any>('/api/v1/stores'),
+    useFetch<any>('/api/v1/rosters', {
+      query: computed(() => ({ store_id: storeId.value, week_start: weekStart.value })),
+      watch: [storeId, weekStart],
+    }),
+    useFetch<any>('/api/v1/templates'),
+    useFetch<any>('/api/v1/staff', {
+      query: { limit: 100, employment_status: 'active' }, default: () => ({ data: [] }),
+    }),
+  ])
+
 const stores = computed<any[]>(() => (storesRes.value?.data || []).filter((s: any) => s.kind === 'store'))
 if (!storeId.value && stores.value.length) storeId.value = stores.value[0].id
 
-const { data: rosterRes, refresh, pending } = await useFetch<any>('/api/v1/rosters', {
-  query: computed(() => ({ store_id: storeId.value, week_start: weekStart.value })),
-  watch: [storeId, weekStart],
-})
 const roster = computed<any>(() => rosterRes.value?.data)
 const shifts = computed<any[]>(() => roster.value?.shifts || [])
-
-// Guardrails come from the detail route, which computes them server-side.
-const { data: detailRes, refresh: refreshDetail } = await useFetch<any>(
-  () => (roster.value ? `/api/v1/rosters/${roster.value.id}` : '/api/v1/templates'),
-  { watch: [roster], immediate: true },
-)
-const warnings = computed<any[]>(() => detailRes.value?.warnings || [])
-
-const { data: templatesRes } = await useFetch<any>('/api/v1/templates')
 const templates = computed<any[]>(() => templatesRes.value?.data || [])
-
-const { data: membersRes } = await useFetch<any>('/api/v1/staff', {
-  query: { limit: 100, employment_status: 'active' }, server: false, default: () => ({ data: [] }),
-})
 const members = computed<any[]>(() => membersRes.value?.data || [])
+
+// Guardrails come from the detail route (computed server-side). Only fetched
+// once a roster exists — it no longer falls back to a duplicate templates call.
+const { data: detailRes, refresh: refreshDetail } = useFetch<any>(
+  () => `/api/v1/rosters/${roster.value?.id}`,
+  { immediate: false },
+)
+// Fetch only when a roster exists; clear stale guardrails on an empty week.
+watch(roster, (r) => {
+  if (r?.id) refreshDetail()
+  else detailRes.value = null
+}, { immediate: true })
+const warnings = computed<any[]>(() => detailRes.value?.warnings || [])
 
 const days = computed(() =>
   Array.from({ length: 7 }, (_, i) => {
@@ -286,7 +358,7 @@ const openShiftCount = computed(() => shifts.value.filter((s) => !s.staff_id).le
 
 const weekLabel = computed(() => `${fmtShort(weekStart.value)} – ${fmtShort(addDays(weekStart.value, 6))}`)
 
-const newShift = reactive({ date: '', template_id: '', staff_id: '' })
+const newShift = reactive({ date: '', template_id: '', staff_id: '', reason: '' })
 watch(days, () => { if (!newShift.date) newShift.date = days.value[0].date }, { immediate: true })
 watch(templates, () => { if (!newShift.template_id && templates.value.length) newShift.template_id = templates.value[0].id }, { immediate: true })
 watch(weekStart, () => { newShift.date = days.value[0].date })
@@ -296,6 +368,7 @@ function shiftWeek(n: number) { weekStart.value = addDays(weekStart.value, n) }
 async function reloadAll() {
   await refresh()
   await refreshDetail()
+  if (showHistory.value && roster.value) await loadHistory()
 }
 
 async function createDraft(copy: boolean) {
@@ -323,19 +396,57 @@ async function addShift() {
         work_date: newShift.date,
         template_id: newShift.template_id,
         staff_id: newShift.staff_id || null,
+        reason: newShift.reason || undefined,
       },
     })
+    newShift.reason = ''
     await reloadAll()
   } catch (err: any) { error.value = err?.data?.message || err?.data?.statusMessage || 'Failed' } finally { busy.value = false }
 }
 
-async function removeShift(sh: any) {
+// Removal is two-step so an optional reason can be captured for the audit
+// trail (disputes turn on the why). Clicking ✕ stages; a bar confirms.
+const pendingRemoval = ref<any>(null)
+const removalReason = ref('')
+function removeShift(sh: any) { pendingRemoval.value = sh; removalReason.value = '' }
+function cancelRemoval() { pendingRemoval.value = null; removalReason.value = '' }
+async function confirmRemoval() {
+  const sh = pendingRemoval.value
+  if (!sh) return
   busy.value = true; error.value = ''
   try {
-    await $fetch(`/api/v1/shifts/${sh.id}`, { method: 'DELETE' })
+    await $fetch(`/api/v1/shifts/${sh.id}`, { method: 'DELETE', body: { reason: removalReason.value || undefined } })
+    pendingRemoval.value = null; removalReason.value = ''
     await reloadAll()
   } catch (err: any) { error.value = err?.data?.message || err?.data?.statusMessage || 'Failed' } finally { busy.value = false }
 }
+
+// ── change history ──
+const showHistory = ref(false)
+const history = ref<any>(null)
+const historyLoading = ref(false)
+const historyDenied = ref(false)
+
+async function loadHistory() {
+  if (!roster.value) return
+  historyLoading.value = true; historyDenied.value = false
+  try {
+    const r: any = await $fetch(`/api/v1/rosters/${roster.value.id}/history`)
+    history.value = r.data
+  } catch (err: any) {
+    if ((err?.status || err?.statusCode) === 403) historyDenied.value = true
+    else error.value = err?.data?.message || err?.data?.statusMessage || 'Could not load history'
+  } finally { historyLoading.value = false }
+}
+async function toggleHistory() {
+  showHistory.value = !showHistory.value
+  if (showHistory.value && roster.value && !history.value) await loadHistory()
+}
+// A different week/roster is a different story — drop what we loaded.
+watch(roster, () => {
+  history.value = null
+  if (showHistory.value && roster.value) loadHistory()
+})
 
 async function publish() {
   busy.value = true; error.value = ''
@@ -353,6 +464,22 @@ function fmtTime(iso: string) {
 }
 function fmtShort(date: string) {
   return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+}
+function fmtDateTime(iso: string) {
+  return new Date(iso).toLocaleString('en-SG', {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Singapore',
+  })
+}
+function opLabel(op: string) {
+  return ({ INSERT: 'added', UPDATE: 'edited', DELETE: 'removed', ACTION: 'action' } as Record<string, string>)[op] || op.toLowerCase()
+}
+function badgeClass(op: string) {
+  return ({
+    INSERT: 'bg-blue-soft text-brown',
+    UPDATE: 'bg-yellow-soft text-brown',
+    DELETE: 'bg-danger-soft text-danger',
+    ACTION: 'bg-surface-sunken text-ink-soft',
+  } as Record<string, string>)[op] || 'bg-surface-sunken text-ink-soft'
 }
 function mondayOf(date: string) {
   const d = new Date(`${date}T00:00:00Z`)

@@ -11,6 +11,7 @@ export const ALL_SCOPES = [
   'roster:read',
   'roster:write',   // draft edits, shift assignment
   'roster:publish', // privileged: makes a roster visible to staff + T&A
+  'roster:history', // read-only: the shift-change audit trail for disputes
   'attendance:read',
   'attendance:write', // clock actions, corrections decisions, imports
   'leave:read',
@@ -21,7 +22,7 @@ export const ALL_SCOPES = [
 ] as const
 
 export const SCOPE_PACKAGES: Record<string, string[]> = {
-  'mcp:safe': ['staff:read', 'org:read', 'roster:read', 'attendance:read', 'leave:read', 'leave:write', 'reports:read'],
+  'mcp:safe': ['staff:read', 'org:read', 'roster:read', 'roster:history', 'attendance:read', 'leave:read', 'leave:write', 'reports:read'],
   'mcp:full': [...ALL_SCOPES],
   pos_connector: ['staff:read', 'pos:sync'],
 }

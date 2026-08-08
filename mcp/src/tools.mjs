@@ -24,6 +24,7 @@ import {
   resolveManager, resolveReportingChain, searchAccountabilities,
 } from '../../core/org/query.mjs'
 import { recordAudit } from '../../core/audit/record.mjs'
+import { rosterHistory } from '../../core/audit/history.mjs'
 
 const DATE = { type: 'string', description: 'YYYY-MM-DD' }
 const STAFF_REF = { type: 'string', description: 'Staff reference: uuid, employee code (e.g. PT001), or a unique name fragment' }
@@ -338,6 +339,20 @@ export const toolDefinitions = [
         store: STORE_REF,
         week_start: DATE,
         format: { type: 'string', enum: ['records', 'csv', 'tsv', 'airtable', 'grid', 'grid_tsv', 'markdown'], default: 'markdown' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'roster_history',
+    description:
+      'The change history for a roster — who added, moved, reassigned or removed each shift, when, from what to what, and the reason given. Use this to settle "my shift was changed" disputes and to explain an adjustment. Read-only. Identify the roster by roster_id, or by store + week_start. Newest change first.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        roster_id: { type: 'string' },
+        store: STORE_REF,
+        week_start: { ...DATE, description: 'Any date in the target week; snaps to Monday' },
       },
       required: [],
     },
@@ -925,6 +940,29 @@ export async function handleTool(name, args = {}) {
         return jsonResult({
           roster: { id: roster.id, week_start: roster.week_start, status: roster.status, store: roster.store },
           ...out,
+        })
+      }
+
+      case 'roster_history': {
+        requireScope('roster:history')
+        let rosterId = a.roster_id
+        if (!rosterId) {
+          if (!a.store || !a.week_start) throw new Error('Provide roster_id, or store + week_start.')
+          const store = await resolveStore(db(), ws(), a.store)
+          const { data: r } = await db().from('rosters').select('id')
+            .eq('workspace_id', ws()).eq('store_id', store.id).eq('week_start', mondayOf(a.week_start)).maybeSingle()
+          if (!r) throw new Error(`No roster for ${store.code} week of ${mondayOf(a.week_start)}.`)
+          rosterId = r.id
+        }
+        const { data: roster } = await db().from('rosters')
+          .select('id, store_id, week_start, status, version').eq('workspace_id', ws()).eq('id', rosterId).maybeSingle()
+        if (!roster) throw new Error(`Roster ${rosterId} not found`)
+        const result = await rosterHistory(db(), ws(), roster)
+        return jsonResult({
+          ...result,
+          note: result.events.length
+            ? 'Newest change first. Each entry names the person, the time, what changed and any reason given.'
+            : 'No changes recorded for this roster yet.',
         })
       }
 

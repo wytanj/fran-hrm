@@ -29,6 +29,7 @@ export const TOOL_SCOPE_CATALOG = {
   attendance_flags_list: { scope: 'attendance:read', action: 'Adherence flags: late, no-show, OT, unscheduled…' },
 
   roster_get: { scope: 'roster:read', action: 'Published roster (shifts by day) for a store + week' },
+  roster_history: { scope: 'roster:history', action: 'The change log for a roster: who adjusted which shift, when and why — for disputes' },
   shifts_list: { scope: 'roster:read', action: 'Shifts for a staff member or store in a date range' },
   availability_list: { scope: 'roster:read', action: 'Staff availability submissions for a date range' },
   swaps_list: { scope: 'roster:read', action: 'Shift swap requests and their status' },

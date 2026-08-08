@@ -16,6 +16,7 @@ export const SCOPES = [
   { scope: 'roster:read', group: 'Scheduling', label: 'View rosters', detail: 'Published rosters, and submit your own availability and swap requests. Draft visibility additionally needs roster:write.' },
   { scope: 'roster:write', group: 'Scheduling', label: 'Build rosters for others', detail: 'Create drafts, add/move/remove shifts, assign staff, decide swap requests, set anyone\'s availability.' },
   { scope: 'roster:publish', group: 'Scheduling', label: 'Publish rosters', detail: 'Makes a roster live for staff and drives attendance comparison. The consequential one.' },
+  { scope: 'roster:history', group: 'Scheduling', label: 'View roster change history', detail: 'The audit trail of who changed which shift, when, and from what to what — for settling adjustments and disputes. Read-only.' },
 
   { scope: 'attendance:read', group: 'Attendance', label: 'View timesheets, and clock yourself', detail: 'Your own clock records and flags, plus requesting a correction on your own timesheet.' },
   { scope: 'attendance:write', group: 'Attendance', label: 'Manage others\' attendance', detail: 'Approve corrections, key manual clock entries, import the offline sheet, show the store QR, review flags.' },
@@ -56,9 +57,9 @@ export const DEFAULT_ROLE_MATRIX = {
   // No *:write for staff — self-service runs on the matching :read plus the
   // identity check. See core/db/010_permissions_split_self_service.sql.
   staff: ['staff:read', 'org:read', 'roster:read', 'attendance:read', 'leave:read', 'leave:write', 'reports:read'],
-  supervisor: ['staff:read', 'org:read', 'roster:read', 'roster:write', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'reports:read'],
-  store_manager: ['staff:read', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read'],
-  area_manager: ['staff:read', 'staff:write', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read', 'reports:cost', 'payroll:lock'],
+  supervisor: ['staff:read', 'org:read', 'roster:read', 'roster:write', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'reports:read'],
+  store_manager: ['staff:read', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read'],
+  area_manager: ['staff:read', 'staff:write', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read', 'reports:cost', 'payroll:lock'],
   hq_admin: [...SCOPE_KEYS.filter((s) => s !== 'pos:sync')],
 }
 

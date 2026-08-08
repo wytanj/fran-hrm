@@ -47,6 +47,9 @@ export default defineEventHandler(async (event) => {
     workspace_id: ctx.workspaceId, actor_kind: ctx.kind === 'api_key' ? 'agent' : 'user',
     actor_id: ctx.actorId, actor_name: ctx.actorName, source_type: ctx.sourceType,
     object_type: 'shifts', entity_id: data.id, operation: 'INSERT', after_data: data,
+    // roster_id/store_id let the change history be pulled per week (incl. once
+    // this shift is deleted); reason is the "why" a dispute later asks for.
+    metadata: { roster_id: roster.id, store_id: roster.store_id, reason: body.reason || null },
   })
   return { data }
 })

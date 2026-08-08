@@ -26,6 +26,7 @@ export default defineEventHandler(async (event) => {
     workspace_id: ctx.workspaceId, actor_kind: ctx.kind === 'api_key' ? 'agent' : 'user',
     actor_id: ctx.actorId, actor_name: ctx.actorName, source_type: ctx.sourceType,
     object_type: 'shifts', entity_id: data.id, operation: 'UPDATE', before_data: before, after_data: data,
+    metadata: { roster_id: before.roster_id, store_id: before.store_id, reason: body.reason || null },
   })
   return { data }
 })
