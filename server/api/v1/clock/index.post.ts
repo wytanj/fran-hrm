@@ -1,6 +1,7 @@
 import { recordAudit } from '../../../../core/audit/record.mjs'
 import { sgToday } from '../../../utils/dates'
 import { assertNotLocked } from '../../../utils/payrollLock'
+import { verifyStaffClockToken } from '../../../utils/staffQr'
 
 // The clock engine. Staff scan the store's daily QR and post
 // { action, qr_token }. Supervisors+ (or attendance:write API keys) may
@@ -24,6 +25,10 @@ export default defineEventHandler(async (event) => {
   let storeId: string
   let method: 'qr' | 'manual' = 'qr'
   let qrTokenId: string | null = null
+  // Reverse scan = a supervisor's device scanned the staff member's own QR.
+  // Recorded as a real 'qr' scan, but we keep the operator for accountability.
+  let reverseMode = false
+  let scannedStaff: { display_name: string; employee_code: string } | null = null
 
   if (body.qr_token) {
     if (ctx.kind !== 'session') throw apiError(400, 'QR clock requires a staff session')
@@ -35,6 +40,29 @@ export default defineEventHandler(async (event) => {
     staffId = ctx.staff.id
     storeId = qr.store_id
     qrTokenId = qr.id
+  } else if (body.staff_qr_token) {
+    // REVERSE scan: the store scanner (a supervisor / attendance:write device)
+    // reads the staff member's rotating personal QR.
+    if (!ctx.has('attendance:write')) {
+      throw apiError(403, 'Scanning a staff check-in QR needs supervisor role or attendance:write. Open the check-in scanner as a supervisor.')
+    }
+    const verified = verifyStaffClockToken(body.staff_qr_token)
+    if (!verified) {
+      throw apiError(422, 'That check-in QR is invalid or has expired — staff codes refresh every minute, ask them to show a fresh one.')
+    }
+    // The token only carries an id; confirm they are a real, active person in
+    // THIS workspace before clocking them (multi-workspace safety).
+    const { data: st } = await db
+      .from('staff').select('id, employment_status, display_name, employee_code')
+      .eq('workspace_id', ctx.workspaceId).eq('id', verified.staffId).maybeSingle()
+    if (!st || st.employment_status !== 'active') {
+      throw apiError(422, 'That check-in QR does not match an active staff member in this workspace.')
+    }
+    scannedStaff = { display_name: st.display_name, employee_code: st.employee_code }
+    staffId = verified.staffId
+    storeId = String(body.store_id || (ctx.kind === 'session' ? ctx.staff.home_store_id : '') || '')
+    if (!storeId) throw apiError(400, 'store_id is required when scanning a staff check-in QR.')
+    reverseMode = true
   } else if (ctx.kind === 'session' && action !== 'clock_in' && !body.staff_id) {
     // Self-service close/break on my own open entry: the open entry proves
     // the QR clock-in, so clocking out or toggling a break needs no rescan.
@@ -156,7 +184,7 @@ export default defineEventHandler(async (event) => {
     method,
     qr_token_id: qrTokenId,
     device_id: body.device_id || null,
-    recorded_by: method === 'manual' && ctx.kind === 'session' ? ctx.staff.id : null,
+    recorded_by: (method === 'manual' || reverseMode) && ctx.kind === 'session' ? ctx.staff.id : null,
     note: body.note || null,
   })
 
@@ -182,5 +210,5 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  return { data: entry, action, flags: flags.map((f) => f.flag_type) }
+  return { data: entry, action, flags: flags.map((f) => f.flag_type), staff: scannedStaff }
 })

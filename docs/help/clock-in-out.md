@@ -5,19 +5,33 @@ summary: Scan the store QR to clock in. Clocking out and breaks need no rescan.
 category: attendance
 primary_path: /clock
 related_paths: [/]
-intent_tags: [clock in, clock out, qr code, punch in, break, scan, start shift, end shift]
+intent_tags: [clock in, clock out, qr code, punch in, break, scan, start shift, end shift, check in, show my qr, scanner, reverse scan]
 sort_order: 10
 ---
 
 # Clocking in and out
 
-## Clock in
+There are two ways to clock, depending on how your store is set up.
+
+## Show your check-in QR (recommended)
+
+1. Open **Clock** → **Show my check-in QR**.
+2. A supervisor points the **Check-in scanner** at your phone.
+3. You're clocked in.
+
+Your code refreshes **every minute**, so a screenshot goes stale fast — the supervisor scanning you at the counter is what confirms you're actually there. This is why you can't just send your code to a colleague to clock you in.
+
+## Or scan the store QR
 
 1. Open **Clock** in FranHRM.
 2. Scan the QR code displayed at your store counter (or type the code shown under it).
 3. Tap **Clock in**.
 
-The QR code **changes every day**. Yesterday's code will not work — that is deliberate, it stops off-site clocking.
+The store QR **changes every day**. Yesterday's code will not work.
+
+## Supervisors — running the scanner
+
+**Manage → Check-in scanner**: pick the action (clock in / out / break), start the camera, and scan each person's check-in QR as they arrive. Works best on an Android/Chrome tablet. Every scan records who you clocked and keeps you as the operator on the entry.
 
 ## Breaks
 

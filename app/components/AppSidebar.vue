@@ -110,6 +110,7 @@ const groups = computed(() => [
     ? [{
         label: 'Manage',
         items: [
+          { to: '/clock-scan', label: 'Check-in scanner', icon: '⧉' },
           { to: '/reports', label: 'Timesheets', icon: '▤', count: pendingCorrections.value },
           { to: '/reports?tab=hours', label: 'Reports', icon: '◲' },
           { to: '/permissions', label: 'Permissions', icon: '⚿' },

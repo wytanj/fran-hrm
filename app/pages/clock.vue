@@ -89,6 +89,20 @@
 
       <!-- Side: corrections + store QR -->
       <div>
+        <!-- My check-in QR (reverse scan): staff show this, supervisor scans -->
+        <div class="mb-4 rounded-lg border border-yellow-deep/40 bg-yellow-soft/40 p-4 text-center shadow-warm-xs">
+          <h3 class="font-display text-[16px] font-bold text-ink">Check in at the counter</h3>
+          <p class="mt-1 text-[12px] text-muted">Show this to your supervisor's scanner.</p>
+          <div v-if="showMyQr && myQr" class="mx-auto mt-3 max-w-[200px]" v-html="myQr.svg" />
+          <p v-if="showMyQr && myQr" class="mt-1.5 text-[11px] text-muted">
+            Refreshes automatically · <span class="tabular-nums">{{ myQrCountdown }}s</span>
+          </p>
+          <p v-if="showMyQr && myQr" class="mt-1 break-all font-mono text-[9px] text-line-strong">{{ myQr.token }}</p>
+          <UiButton variant="tonal" size="sm" class="mt-3 w-full" :loading="myQrLoading" @click="toggleMyQr">
+            {{ showMyQr ? 'Hide my QR' : 'Show my check-in QR' }}
+          </UiButton>
+        </div>
+
         <div class="rounded-lg border border-line bg-white p-4 shadow-warm-xs">
           <h3 class="font-display text-[16px] font-bold text-ink">Missed a clock?</h3>
           <p class="mt-1 text-[12px] text-muted">
@@ -225,6 +239,38 @@ async function submitCorrection() {
   } finally { corrSubmitting.value = false }
 }
 
+// ── my check-in QR (reverse scan) ──
+const myQr = ref<any>(null)
+const showMyQr = ref(false)
+const myQrLoading = ref(false)
+const myQrCountdown = ref(0)
+let myQrTimer: any = null
+let myQrCountdownTimer: any = null
+
+async function loadMyQr() {
+  myQrLoading.value = true
+  try {
+    const res: any = await $fetch('/api/v1/clock/my-qr')
+    myQr.value = res.data
+    const ttl = Math.floor((myQr.value?.ttl_ms || 60000) / 1000)
+    myQrCountdown.value = ttl
+    if (myQrCountdownTimer) clearInterval(myQrCountdownTimer)
+    myQrCountdownTimer = setInterval(() => { myQrCountdown.value = Math.max(0, myQrCountdown.value - 1) }, 1000)
+  } finally { myQrLoading.value = false }
+}
+async function toggleMyQr() {
+  showMyQr.value = !showMyQr.value
+  if (showMyQr.value) {
+    await loadMyQr()
+    if (myQrTimer) clearInterval(myQrTimer)
+    myQrTimer = setInterval(loadMyQr, Math.max(15000, (myQr.value?.ttl_ms || 60000) - 5000))
+  } else {
+    if (myQrTimer) { clearInterval(myQrTimer); myQrTimer = null }
+    if (myQrCountdownTimer) { clearInterval(myQrCountdownTimer); myQrCountdownTimer = null }
+    myQr.value = null
+  }
+}
+
 const qr = ref<any>(null)
 const qrLoading = ref(false)
 
@@ -240,7 +286,11 @@ async function loadQr() {
 const now = ref(new Date())
 let timer: any
 onMounted(() => { timer = setInterval(() => (now.value = new Date()), 1000) })
-onUnmounted(() => clearInterval(timer))
+onUnmounted(() => {
+  clearInterval(timer)
+  if (myQrTimer) clearInterval(myQrTimer)
+  if (myQrCountdownTimer) clearInterval(myQrCountdownTimer)
+})
 
 const clockFace = computed(() =>
   now.value.toLocaleTimeString('en-SG', { hour12: false, timeZone: 'Asia/Singapore' }))

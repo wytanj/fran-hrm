@@ -24,6 +24,7 @@ Onboard real people "fran-skums style": invite link + **Google SSO** for dashboa
 **Open decision:** mirror skums exactly (Supabase Auth + Google) — chosen — vs a lighter **custom Google OAuth** that keeps the existing session model (no Supabase Auth / no anon key). Revisit if enabling Supabase Auth is unwanted.
 
 ## ✅ Recently done
+- **Reverse-scan check-in** — staff show a rotating personal QR (`/api/v1/clock/my-qr`, 60s signed token), a supervisor's **Check-in scanner** (`/clock-scan`) reads it; clock endpoint gains a reverse mode (attendance:write). Attended = the witness is the security control. Floor path only; independent of SSO.
 - Roster **change history** for adjustments/disputes — data model (mig `012`) + REST + MCP (`roster_history`) + GUI timeline + optional adjustment reason + `roster:history` matrix permission + help article. (`5635280`)
 - `/roster` load latency — parallelized the SSR fetch waterfall, dropped a duplicate templates fetch. (`5635280`)
 - Roster builder Generate tab — proposal grid read the wrong key (`grid` vs `table`). (`8a04180`)
