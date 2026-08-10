@@ -1,7 +1,7 @@
 <template>
   <div>
     <UiPageHeader eyebrow="Manager tools" title="Timesheets & reports"
-      subtitle="Scheduled versus actual, overtime, adherence flags and payroll periods.">
+      subtitle="Scheduled versus actual, overtime, adherence flags, weekly sign-off and payroll periods.">
       <template #actions>
         <input v-model="from" type="date" class="h-9 rounded-md border border-line bg-white px-2.5 text-[13px]">
         <span class="text-[12px] text-muted">to</span>
@@ -11,7 +11,9 @@
           <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.name }}</option>
         </select>
         <a class="press inline-flex h-9 items-center rounded-md bg-yellow px-3 text-[12.5px] font-semibold text-brown shadow-glow"
-          :href="exportUrl" download>Export CSV</a>
+          :href="exportUrls.csv" download>CSV</a>
+        <a class="press inline-flex h-9 items-center rounded-md border border-line bg-white px-3 text-[12.5px] font-semibold text-brown"
+          :href="exportUrls.json" target="_blank" rel="noopener">JSON</a>
       </template>
     </UiPageHeader>
 
@@ -79,6 +81,55 @@
       </p>
     </template>
 
+    <!-- ===== SIGN-OFF ===== -->
+    <template v-if="tab === 'signoff'">
+      <p class="mb-3 text-[12.5px] text-muted">
+        Sign off each store's week once the timesheet is checked. A week still open past its end + 7 days shows as
+        <span class="font-semibold text-danger">overdue</span>. Edits after sign-off are still allowed but ask for a reason and re-flag the week.
+      </p>
+      <UiBusy :busy="weeksPending" label="Loading weeks…">
+      <UiTable :columns="[
+        { key: 'week', label: 'Week' },
+        { key: 'store', label: 'Store' },
+        { key: 'vol', label: 'Entries', align: 'right' },
+        { key: 'status', label: 'Status', align: 'center', width: '130px' },
+        { key: 'by', label: 'Signed off' },
+        { key: 'action', label: '', align: 'right', width: '230px' },
+      ]">
+        <tr v-for="w in weeks" :key="`${w.store_id}|${w.week_start}`" class="border-b border-line-soft last:border-0 hover:bg-surface-sunken/50">
+          <td class="px-3.5 py-2.5 font-semibold tabular-nums text-ink">{{ w.week_start }} – {{ w.week_end }}</td>
+          <td class="px-3.5 py-2.5 text-muted">{{ w.store?.name || '—' }}</td>
+          <td class="px-3.5 py-2.5 text-right tabular-nums text-muted">{{ w.entry_count }} · {{ w.staff_count }} staff</td>
+          <td class="px-3.5 py-2.5 text-center">
+            <UiBadge v-if="w.overdue" tone="danger">overdue</UiBadge>
+            <UiBadge v-else-if="w.status === 'signed_off'" tone="success">signed off</UiBadge>
+            <UiBadge v-else tone="warning">open</UiBadge>
+            <p v-if="w.amended_count" class="mt-0.5 text-[10.5px] font-semibold text-warning">amended ×{{ w.amended_count }}</p>
+          </td>
+          <td class="px-3.5 py-2.5 text-[12px] text-muted">
+            <template v-if="w.signed_off_at">{{ w.signed_off_by || '—' }} · {{ fmtDateShort(w.signed_off_at) }}</template>
+            <template v-else>—</template>
+          </td>
+          <td class="px-3.5 py-2.5 text-right">
+            <div v-if="reopenKey === `${w.store_id}|${w.week_start}`" class="flex items-center justify-end gap-1.5">
+              <input v-model="reopenReason" placeholder="Reason to reopen"
+                class="h-8 w-40 rounded-md border border-line bg-white px-2 text-[12px]">
+              <button class="press rounded-md bg-yellow px-2.5 py-1 text-[12px] font-semibold text-brown" @click="confirmReopen(w)">Reopen</button>
+              <button class="press text-[12px] font-semibold text-muted" @click="reopenKey = ''">Cancel</button>
+            </div>
+            <div v-else class="flex justify-end gap-1.5">
+              <button v-if="w.status !== 'signed_off'" class="press rounded-md bg-yellow px-2.5 py-1 text-[12px] font-semibold text-brown" @click="signOffWeek(w)">Sign off</button>
+              <button v-else class="press rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-brown" @click="startReopen(w)">Reopen</button>
+            </div>
+          </td>
+        </tr>
+        <tr v-if="!weeks.length">
+          <td colspan="6" class="px-3.5 py-8 text-center text-[13px] text-muted">No weeks with time entries in this range.</td>
+        </tr>
+      </UiTable>
+      </UiBusy>
+    </template>
+
     <!-- ===== FLAGS ===== -->
     <template v-if="tab === 'flags'">
       <UiBusy :busy="flagsPending" label="Loading flags…">
@@ -136,7 +187,13 @@
             <UiBadge :tone="c.status === 'approved' ? 'success' : c.status === 'rejected' ? 'danger' : 'warning'">{{ c.status }}</UiBadge>
           </td>
           <td class="px-3.5 py-2.5 text-right">
-            <div v-if="c.status === 'pending'" class="flex justify-end gap-1.5">
+            <div v-if="c.status === 'pending' && reasonPromptId === c.id" class="flex items-center justify-end gap-1.5">
+              <input v-model="pastReason" placeholder="Reason (week signed off)"
+                class="h-8 w-44 rounded-md border border-warning/50 bg-white px-2 text-[12px]">
+              <button class="press rounded-md bg-yellow px-2.5 py-1 text-[12px] font-semibold text-brown" :disabled="!pastReason.trim()" @click="decideCorrection(c, 'approved')">Approve anyway</button>
+              <button class="press text-[12px] font-semibold text-muted" @click="reasonPromptId = ''">Cancel</button>
+            </div>
+            <div v-else-if="c.status === 'pending'" class="flex justify-end gap-1.5">
               <button class="press rounded-md bg-yellow px-2.5 py-1 text-[12px] font-semibold text-brown" @click="decideCorrection(c, 'approved')">Approve</button>
               <button class="press rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-brown" @click="decideCorrection(c, 'rejected')">Reject</button>
             </div>
@@ -252,12 +309,39 @@ const corrections = computed<any[]>(() => corrRes.value?.data || [])
 const { data: payRes, refresh: refreshPay } = await useFetch<any>('/api/v1/pay-periods', { default: () => ({ data: [] }) })
 const payPeriods = computed<any[]>(() => payRes.value?.data || [])
 
+const { data: weeksRes, refresh: refreshWeeks, pending: weeksPending } = await useFetch<any>('/api/v1/timesheets/weeks', {
+  query, watch: [from, to, storeId], default: () => ({ data: [], overdue_count: 0 }),
+})
+const weeks = computed<any[]>(() => weeksRes.value?.data || [])
+const overdueCount = computed<number>(() => weeksRes.value?.overdue_count || 0)
+
 const tabs = computed(() => [
   { key: 'hours', label: 'Hours', count: 0 },
+  { key: 'signoff', label: 'Sign-off', count: overdueCount.value },
   { key: 'flags', label: 'Flags', count: flags.value.filter((f) => f.status === 'open').length },
   { key: 'corrections', label: 'Corrections', count: corrections.value.filter((c) => c.status === 'pending').length },
   { key: 'payroll', label: 'Payroll', count: 0 },
 ])
+
+// Sign-off actions
+async function signOffWeek(w: any) {
+  error.value = ''
+  try {
+    await $fetch('/api/v1/timesheets/sign-off', { method: 'POST', body: { store_id: w.store_id, week_start: w.week_start, action: 'sign_off' } })
+    await refreshWeeks()
+  } catch (err: any) { error.value = err?.data?.message || err?.data?.statusMessage || 'Failed' }
+}
+const reopenKey = ref('')
+const reopenReason = ref('')
+function startReopen(w: any) { reopenKey.value = `${w.store_id}|${w.week_start}`; reopenReason.value = '' }
+async function confirmReopen(w: any) {
+  error.value = ''
+  try {
+    await $fetch('/api/v1/timesheets/sign-off', { method: 'POST', body: { store_id: w.store_id, week_start: w.week_start, action: 'reopen', reason: reopenReason.value } })
+    reopenKey.value = ''
+    await refreshWeeks()
+  } catch (err: any) { error.value = err?.data?.message || err?.data?.statusMessage || 'Failed' }
+}
 
 const hoursColumns = computed(() => {
   const cols: any[] = [
@@ -280,10 +364,16 @@ const totalOt = computed(() =>
 const incomplete = computed(() =>
   (summary.value?.rows || []).reduce((s: number, r: any) => s + (r.incomplete_entries || 0), 0))
 
-const exportUrl = computed(() => {
-  const p = new URLSearchParams({ from: from.value, to: to.value, format: 'csv' })
-  if (storeId.value) p.set('store_id', storeId.value)
-  return `/api/v1/reports/attendance?${p}`
+// Export the active tab's report as CSV or JSON. Hours and attendance both
+// support ?format; the others fall back to the attendance export.
+const exportUrls = computed(() => {
+  const base = tab.value === 'hours' ? '/api/v1/reports/hours' : '/api/v1/reports/attendance'
+  const build = (format: string) => {
+    const p = new URLSearchParams({ from: from.value, to: to.value, format })
+    if (storeId.value) p.set('store_id', storeId.value)
+    return `${base}?${p}`
+  }
+  return { csv: build('csv'), json: build('json') }
 })
 
 async function reviewFlag(f: any) {
@@ -291,11 +381,22 @@ async function reviewFlag(f: any) {
   await refreshFlags()
 }
 
+// Approving a correction on a signed-off week needs a past-close reason; the
+// API 422s with needs_reason, and we surface an inline reason box to retry.
+const reasonPromptId = ref('')
+const pastReason = ref('')
 async function decideCorrection(c: any, decision: string) {
+  error.value = ''
   try {
-    await $fetch(`/api/v1/corrections/${c.id}/decide`, { method: 'POST', body: { decision } })
-    await refreshCorr()
-  } catch (err: any) { error.value = err?.data?.message || err?.data?.statusMessage || 'Failed' }
+    const body: Record<string, any> = { decision }
+    if (decision === 'approved' && reasonPromptId.value === c.id) body.reason = pastReason.value
+    await $fetch(`/api/v1/corrections/${c.id}/decide`, { method: 'POST', body })
+    reasonPromptId.value = ''; pastReason.value = ''
+    await Promise.all([refreshCorr(), refreshWeeks()])
+  } catch (err: any) {
+    if (err?.data?.data?.needs_reason) { reasonPromptId.value = c.id; pastReason.value = ''; return }
+    error.value = err?.data?.message || err?.data?.statusMessage || 'Failed'
+  }
 }
 
 const newPeriod = reactive({ start: '', end: '' })
@@ -356,5 +457,8 @@ function addDays(date: string, n: number) {
   const d = new Date(`${date}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() + n)
   return d.toISOString().slice(0, 10)
+}
+function fmtDateShort(iso: string) {
+  return new Date(iso).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', timeZone: 'Asia/Singapore' })
 }
 </script>

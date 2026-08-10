@@ -1,4 +1,6 @@
 import { recordAudit } from '../../../../../core/audit/record.mjs'
+// @ts-ignore .mjs shared module
+import { getSignoffForDate, recordAmendmentIfSignedOff } from '../../../../../core/attendance/signoff.mjs'
 import { sgTimestamp } from '../../../../utils/dates'
 import { assertNotLocked } from '../../../../utils/payrollLock'
 
@@ -22,9 +24,23 @@ export default defineEventHandler(async (event) => {
 
   let before: any = null
   let after: any = null
+  // If the week is already signed off, approving a correction is a post-close
+  // amendment: it needs a reason, gets logged, and re-flags the week.
+  let signoff: any = null
+  let pastCloseReason: string | null = null
 
   if (decision === 'approved') {
     await assertNotLocked(ctx.workspaceId, corr.work_date)
+
+    signoff = await getSignoffForDate(db, ctx.workspaceId, corr.store_id, corr.work_date)
+    if (signoff?.status === 'signed_off') {
+      pastCloseReason = String(body?.reason || '').trim()
+      if (!pastCloseReason) {
+        throw apiError(422,
+          `The timesheet for the week of ${signoff.week_start} is signed off. Provide a reason to edit it after close — the change is logged and the week is flagged for re-review.`,
+          { needs_reason: true, week_start: signoff.week_start })
+      }
+    }
 
     if (corr.field === 'add_entry') {
       // new_value format: "HH:MM-HH:MM[,break_minutes]"
@@ -78,13 +94,33 @@ export default defineEventHandler(async (event) => {
   }).eq('id', corr.id).select().single()
   if (error) throw apiError(500, error.message)
 
+  // Post-close amendment: bump the week's counters and log it to the register.
+  if (pastCloseReason && signoff) {
+    await recordAmendmentIfSignedOff(db, ctx.workspaceId, {
+      storeId: corr.store_id, workDate: corr.work_date,
+      actor: { staffId: ctx.kind === 'session' ? ctx.staff.id : null },
+    })
+    await recordAudit(db, {
+      workspace_id: ctx.workspaceId, actor_kind: ctx.kind === 'api_key' ? 'agent' : 'user',
+      actor_id: ctx.actorId, actor_name: ctx.actorName, source_type: ctx.sourceType,
+      object_type: 'timesheet_weeks', entity_id: signoff.id, operation: 'ACTION',
+      metadata: {
+        action: 'edit_after_signoff', reason: pastCloseReason,
+        correction_id: corr.id, work_date: corr.work_date, store_id: corr.store_id,
+      },
+    })
+  }
+
   await recordAudit(db, {
     workspace_id: ctx.workspaceId, actor_kind: ctx.kind === 'api_key' ? 'agent' : 'user',
     actor_id: ctx.actorId, actor_name: ctx.actorName, source_type: ctx.sourceType,
     object_type: 'time_corrections', entity_id: corr.id, operation: 'ACTION',
     before_data: before ? { entry: before, status: 'pending' } : { status: 'pending' },
     after_data: after ? { entry: after, status: decision } : { status: decision },
-    metadata: { action: 'decide_correction', field: corr.field, old_value: corr.old_value, new_value: corr.new_value },
+    metadata: {
+      action: 'decide_correction', field: corr.field, old_value: corr.old_value, new_value: corr.new_value,
+      ...(pastCloseReason ? { past_close_reason: pastCloseReason } : {}),
+    },
   })
-  return { data, applied: decision === 'approved' }
+  return { data, applied: decision === 'approved', past_close: !!pastCloseReason }
 })

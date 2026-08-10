@@ -25,6 +25,7 @@ export const TOOL_SCOPE_CATALOG = {
 
   hours_worked: { scope: 'reports:read', action: 'Worked hours for one staff member in a timeframe, with OT breakdown' },
   attendance_summary: { scope: 'reports:read', action: 'Per-staff hours/OT/lateness summary for a store + window' },
+  timesheet_status: { scope: 'reports:read', action: 'Weekly timesheet sign-off status per store, with overdue and amended-after-close flags' },
   time_entries_list: { scope: 'attendance:read', action: 'Raw time entries (clock in/out/breaks) for staff or store' },
   attendance_flags_list: { scope: 'attendance:read', action: 'Adherence flags: late, no-show, OT, unscheduled…' },
 

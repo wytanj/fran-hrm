@@ -1,6 +1,6 @@
 import { hoursWorked, attendanceSummary } from '../../../../core/attendance/query.mjs'
 import { resolveStaff } from '../../../../core/staff/query.mjs'
-import { assertDate } from '../../../utils/dates'
+import { assertDate, csvEscape } from '../../../utils/dates'
 
 // Worked-hours report. ?staff_id (or employee code) + from + to → per-staff
 // breakdown with OT; ?store_id + from + to → per-store summary. Manpower
@@ -54,6 +54,17 @@ export default defineEventHandler(async (event) => {
       }
       ;(summary as any).estimated_total_cost_cents = totalCost
     }
+  }
+
+  if (String(q.format) === 'csv') {
+    const headers = ['employee_code', 'display_name', 'employment_type', 'total_hours', 'days_worked', 'weekly_ot_hours', 'incomplete_entries', ...(canSeeCost ? ['estimated_cost_cents'] : [])]
+    const csv = [
+      headers.join(','),
+      ...(summary.rows as any[]).map((r) => headers.map((h) => csvEscape(r[h])).join(',')),
+    ].join('\n')
+    setHeader(event, 'Content-Type', 'text/csv; charset=utf-8')
+    setHeader(event, 'Content-Disposition', `attachment; filename="hours_${from}_${to}.csv"`)
+    return csv
   }
   return { data: summary }
 })

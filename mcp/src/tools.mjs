@@ -16,6 +16,7 @@ import {
   applyRun, generateProposal, importCommit, importPreview, loadPlanningContext, mondayOf,
 } from '../../core/roster/intake.mjs'
 import { hoursWorked, attendanceSummary, listTimeEntries, listFlags } from '../../core/attendance/query.mjs'
+import { listTimesheetWeeks } from '../../core/attendance/signoff.mjs'
 import { listLeaveTypes, listLeaveRequests, getLeaveBalances, leaveDaysBetween } from '../../core/leave/query.mjs'
 import { resolveHelp, getHelpArticle, listHelpArticles } from '../../core/help/resolve.mjs'
 import {
@@ -171,6 +172,16 @@ export const toolDefinitions = [
     name: 'attendance_summary',
     description:
       'Per-staff hours, OT, days worked and flag counts for a store (or whole company) in a window. Prefer this over paginating time_entries_list for overview questions.',
+    inputSchema: {
+      type: 'object',
+      properties: { store: STORE_REF, from: DATE, to: DATE },
+      required: ['from', 'to'],
+    },
+  },
+  {
+    name: 'timesheet_status',
+    description:
+      'Weekly timesheet sign-off status per store: which weeks are signed off, by whom, which are still OPEN, which are OVERDUE (unsigned past week_end + 7 days), and which were amended after sign-off (edited post-close — needs re-review). Use this to answer "which timesheets are outstanding?" and "has last week been signed off?". Read-only.',
     inputSchema: {
       type: 'object',
       properties: { store: STORE_REF, from: DATE, to: DATE },
@@ -667,6 +678,19 @@ export async function handleTool(name, args = {}) {
         const store = a.store ? await resolveStore(db(), ws(), a.store) : null
         const settings = await getSettings(db(), ws())
         return jsonResult(await attendanceSummary(db(), ws(), { store_id: store?.id, from: a.from, to: a.to }, settings))
+      }
+
+      case 'timesheet_status': {
+        requireScope('reports:read')
+        assertManagerView('timesheet sign-off status')
+        const store = a.store ? await resolveStore(db(), ws(), a.store) : null
+        const result = await listTimesheetWeeks(db(), ws(), { storeId: store?.id, from: a.from, to: a.to })
+        return jsonResult({
+          ...result,
+          note: result.overdue_count
+            ? `${result.overdue_count} week(s) OVERDUE (unsigned past week_end + 7 days) — these need a supervisor to sign off.`
+            : 'No overdue weeks in this window.',
+        })
       }
 
       case 'time_entries_list': {
