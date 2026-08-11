@@ -180,7 +180,7 @@
         <tbody>
           <tr v-for="row in matrix" :key="row.staff_id || 'open'" class="border-b border-line-soft last:border-0">
             <td class="sticky left-0 z-10 bg-white px-3.5 py-2">
-              <p class="text-[13px] font-semibold text-ink">{{ row.name }}</p>
+              <p class="text-[13px] font-semibold text-ink">{{ row.name }}<UiDummyTag :show="row.dummy" /></p>
               <p class="text-[11px] text-muted">
                 {{ row.employee_code }}<span v-if="row.type"> · {{ row.type === 'part_time' ? 'PT' : 'FT' }}</span>
                 <span v-if="row.cap" class="text-muted"> · cap {{ row.cap }}h</span>
@@ -231,7 +231,7 @@
             class="flex items-center gap-3 px-3.5 py-2.5" :class="i > 0 ? 'border-t border-line-soft' : ''">
             <span class="w-[92px] shrink-0 text-[12.5px] font-semibold tabular-nums">{{ fmtTime(sh.start_at) }}–{{ fmtTime(sh.end_at) }}</span>
             <span class="flex-1 truncate text-[13px]" :class="sh.staff ? 'text-ink' : 'italic text-warning'">
-              {{ sh.staff?.display_name || 'Open shift' }}
+              {{ sh.staff?.display_name || 'Open shift' }}<UiDummyTag :show="memberById.get(sh.staff_id)?.is_dummy" />
             </span>
             <button v-if="isManager" class="press text-[11px] text-danger" @click="removeShift(sh)">✕</button>
           </div>
@@ -279,6 +279,7 @@ const roster = computed<any>(() => rosterRes.value?.data)
 const shifts = computed<any[]>(() => roster.value?.shifts || [])
 const templates = computed<any[]>(() => templatesRes.value?.data || [])
 const members = computed<any[]>(() => membersRes.value?.data || [])
+const memberById = computed(() => new Map(members.value.map((m: any) => [m.id, m])))
 
 // Guardrails come from the detail route (computed server-side). Only fetched
 // once a roster exists — it no longer falls back to a duplicate templates call.
@@ -335,6 +336,7 @@ const matrix = computed(() => {
         employee_code: sh.staff?.employee_code || 'unassigned',
         type: member?.employment_type || null,
         cap: member?.pt_weekly_hour_cap || null,
+        dummy: member?.is_dummy || false,
         byDate: {} as Record<string, any[]>,
         hours: 0,
       })

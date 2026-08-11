@@ -13,7 +13,7 @@ Onboard real people "fran-skums style": invite link + **Google SSO** for dashboa
 
 **Build sequence (starts once unblocked; nothing deploys until verified against a real Google login):**
 - [ ] Add `@nuxtjs/supabase` + anon key; wire client
-- [ ] Migration `014`: `workspace_invites` (email, role, token, expiry, accepted binding) — note `012` and `013` are taken
+- [ ] Migration `015`: `workspace_invites` (email, role, token, expiry, accepted binding) — note `012`–`014` are taken
 - [ ] `/auth/login` (Google) + `/auth/confirm` callback; keep `/login` PIN for floor
 - [ ] Dual-auth: `requireActor` / `getSessionStaff` / `useSession` / middleware accept Google session **or** PIN cookie; map Google email → staff role
 - [ ] Invite create endpoint + accept/bind flow + Team invite UI (`email+role → /invite/{token}`)
@@ -24,6 +24,7 @@ Onboard real people "fran-skums style": invite link + **Google SSO** for dashboa
 **Open decision:** mirror skums exactly (Supabase Auth + Google) — chosen — vs a lighter **custom Google OAuth** that keeps the existing session model (no Supabase Auth / no anon key). Revisit if enabling Supabase Auth is unwanted.
 
 ## ✅ Recently done (all deployed to fran-hrm-lime)
+- **Dummy (test) staff** — `staff.is_dummy` (mig `014`); create via Team → Testing tools (auto `DUMMY-xxxx` code, PIN 123456) or `POST /staff {is_dummy:true}`; **"Dummy" tag** beside the name on Team, Roster (matrix+mobile) and Reports; dummy-only hard purge (`DELETE /staff/:id`) + **Remove all** (`POST /staff/purge-dummies`) — real staff can't be hard-deleted.
 - **Weekly timesheet sign-off** — per store-week sign-off (mig `013` `timesheet_weeks`), **overdue** flag (unsigned past week_end+7d), **soft edit-past-close** (reason + logged + week re-flagged `amended`) wired into corrections-approve, **CSV+JSON** export on hours (attendance already had CSV), `timesheet_status` MCP tool, Sign-off tab on `/reports`, help article. (`2a09f42`)
 - **Reverse-scan check-in** — staff show a rotating personal QR (`/api/v1/clock/my-qr`, 60s signed token), a supervisor's **Check-in scanner** (`/clock-scan`) reads it; clock endpoint gains a reverse mode (attendance:write). Attended = the witness is the security control. Floor path only; independent of SSO. (`a5ffd5c`)
 - Roster **change history** for adjustments/disputes — data model (mig `012`) + REST + MCP (`roster_history`) + GUI timeline + optional adjustment reason + `roster:history` matrix permission + help article. (`5635280`)

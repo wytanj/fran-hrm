@@ -67,7 +67,7 @@ export async function attendanceSummary(db, workspaceId, { store_id, from, to },
   if (!from || !to) throw new Error('from and to are required')
   let q = db
     .from('time_entries')
-    .select(`${ENTRY_COLS}, staff:staff_id(id, employee_code, display_name, employment_type)`)
+    .select(`${ENTRY_COLS}, staff:staff_id(id, employee_code, display_name, employment_type, is_dummy)`)
     .eq('workspace_id', workspaceId)
     .gte('work_date', from)
     .lte('work_date', to)
@@ -106,6 +106,7 @@ export async function attendanceSummary(db, workspaceId, { store_id, from, to },
       employee_code: staff?.employee_code,
       display_name: staff?.display_name,
       employment_type: staff?.employment_type,
+      is_dummy: staff?.is_dummy || false,
       total_hours: hours.total_hours,
       days_worked: hours.days_worked,
       weekly_ot_hours: hours.overtime.weekly_ot_hours,

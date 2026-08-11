@@ -44,7 +44,7 @@
       <UiTable :columns="hoursColumns">
         <tr v-for="r in summary?.rows || []" :key="r.staff_id" class="border-b border-line-soft last:border-0 hover:bg-surface-sunken/50">
           <td class="px-3.5 py-2.5">
-            <span class="font-semibold text-ink">{{ r.display_name }}</span>
+            <span class="font-semibold text-ink">{{ r.display_name }}</span><UiDummyTag :show="r.is_dummy" />
             <span class="ml-1.5 text-[11.5px] text-muted">{{ r.employee_code }}</span>
           </td>
           <td class="px-3.5 py-2.5">

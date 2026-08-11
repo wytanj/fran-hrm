@@ -33,6 +33,7 @@ export function compactStaff(row, { includeRate = false } = {}) {
     reports_to_id: row.reports_to_id || null,
     employment_type: row.employment_type,
     employment_status: row.employment_status,
+    is_dummy: row.is_dummy || false,
     home_store_id: row.home_store_id,
     home_store: row.home_store ? { id: row.home_store.id, code: row.home_store.code, name: row.home_store.name } : undefined,
     pt_weekly_hour_cap: row.pt_weekly_hour_cap,

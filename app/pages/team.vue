@@ -35,7 +35,7 @@
               {{ initials(m.display_name) }}
             </span>
             <div class="min-w-0">
-              <p class="truncate text-[13px] font-semibold text-ink">{{ m.display_name }}</p>
+              <p class="truncate text-[13px] font-semibold text-ink">{{ m.display_name }}<UiDummyTag :show="m.is_dummy" /></p>
               <p class="truncate text-[11.5px] text-muted">{{ m.email || m.phone || '—' }}</p>
             </div>
           </div>
@@ -70,9 +70,74 @@
     </UiBusy>
 
     <p class="mt-2 text-[11.5px] text-muted">
-      Adding or editing staff requires an area manager and is done via the API — see the project README.
+      Adding or editing real staff requires an area manager and is done via the API — see the project README.
       Pay rates are visible to area managers and above only.
     </p>
+
+    <!-- Testing tools: create/purge dummy staff (area manager+) -->
+    <div v-if="isAreaManager" class="mt-6 rounded-lg border border-dashed border-brown/30 bg-peach-soft/40 p-4">
+      <div class="flex flex-wrap items-center gap-2">
+        <h3 class="font-display text-[15px] font-bold text-ink">Testing tools</h3>
+        <UiDummyTag :show="true" />
+        <span class="text-[12px] text-muted">Throwaway people for end-to-end testing. Tagged everywhere; purge when done.</span>
+        <button class="press ml-auto text-[12.5px] font-semibold text-brown" @click="showTesting = !showTesting">
+          {{ showTesting ? 'Hide' : 'Open' }}
+        </button>
+      </div>
+
+      <div v-if="showTesting" class="mt-3">
+        <div class="flex flex-wrap items-end gap-2.5 rounded-md border border-line bg-white p-3">
+          <label class="block">
+            <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Name</span>
+            <input v-model="dummy.name" placeholder="Test Person"
+              class="h-9 w-44 rounded-md border border-line bg-white px-2.5 text-[13px]">
+          </label>
+          <label class="block">
+            <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Role</span>
+            <select v-model="dummy.role" class="h-9 rounded-md border border-line bg-white px-2 text-[13px]">
+              <option value="staff">Staff</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="store_manager">Store Manager</option>
+              <option value="area_manager">Area Manager</option>
+              <option value="hq_admin">HQ Admin</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Type</span>
+            <select v-model="dummy.type" class="h-9 rounded-md border border-line bg-white px-2 text-[13px]">
+              <option value="full_time">Full-time</option>
+              <option value="part_time">Part-time</option>
+            </select>
+          </label>
+          <label v-if="stores.length" class="block">
+            <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Store</span>
+            <select v-model="dummy.store" class="h-9 rounded-md border border-line bg-white px-2 text-[13px]">
+              <option value="">—</option>
+              <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+          </label>
+          <UiButton size="sm" :loading="creating" :disabled="!dummy.name.trim()" @click="createDummy">Create dummy</UiButton>
+          <span class="text-[11px] text-muted">Signs in with the created code · PIN 123456</span>
+        </div>
+
+        <div v-if="dummies.length" class="mt-3 overflow-hidden rounded-md border border-line bg-white">
+          <div class="flex items-center gap-2 border-b border-line-soft px-3 py-2">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">{{ dummies.length }} dummy staff</p>
+            <button class="press ml-auto rounded-md border border-danger/40 px-2.5 py-1 text-[12px] font-semibold text-danger" :disabled="busy" @click="purgeAll">
+              Remove all dummies
+            </button>
+          </div>
+          <div v-for="m in dummies" :key="m.id" class="flex items-center gap-2 border-b border-line-soft px-3 py-1.5 last:border-0 text-[12.5px]">
+            <span class="font-semibold text-ink">{{ m.display_name }}</span>
+            <span class="font-mono text-[11px] text-muted">{{ m.employee_code }}</span>
+            <span class="text-[11px] text-muted">{{ roleLabel(m.role) }}</span>
+            <button class="press ml-auto text-[12px] font-semibold text-danger" :disabled="busy" @click="removeDummy(m)">Remove</button>
+          </div>
+        </div>
+        <p v-else class="mt-2 text-[12px] text-muted">No dummy staff yet.</p>
+        <p v-if="testMsg" class="mt-2 text-[12px]" :class="testErr ? 'text-danger' : 'text-success'">{{ testMsg }}</p>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -85,7 +150,7 @@ const search = ref('')
 const typeFilter = ref('')
 const statusFilter = ref('active')
 
-const { data: res, pending } = await useFetch<any>('/api/v1/staff', {
+const { data: res, pending, refresh } = await useFetch<any>('/api/v1/staff', {
   query: computed(() => ({
     limit: 100,
     search: search.value || undefined,
@@ -95,6 +160,55 @@ const { data: res, pending } = await useFetch<any>('/api/v1/staff', {
   watch: [search, typeFilter, statusFilter],
 })
 const team = computed<any[]>(() => res.value?.data || [])
+
+// ── testing tools: dummy staff ──
+const { data: storesRes } = await useFetch<any>('/api/v1/stores')
+const stores = computed<any[]>(() => (storesRes.value?.data || []).filter((s: any) => s.kind === 'store'))
+const dummies = computed<any[]>(() => team.value.filter((m) => m.is_dummy))
+
+const showTesting = ref(false)
+const creating = ref(false)
+const busy = ref(false)
+const testMsg = ref('')
+const testErr = ref(false)
+const dummy = reactive({ name: '', role: 'staff', type: 'full_time', store: '' })
+
+async function createDummy() {
+  creating.value = true; testMsg.value = ''; testErr.value = false
+  try {
+    const r: any = await $fetch('/api/v1/staff', {
+      method: 'POST',
+      body: {
+        is_dummy: true,
+        display_name: dummy.name.trim(),
+        role: dummy.role,
+        employment_type: dummy.type,
+        home_store_id: dummy.store || undefined,
+      },
+    })
+    dummy.name = ''
+    testMsg.value = `Created ${r.data?.display_name} (${r.data?.employee_code}) · PIN 123456`
+    await refresh()
+  } catch (err: any) { testErr.value = true; testMsg.value = err?.data?.message || err?.data?.statusMessage || 'Failed' } finally { creating.value = false }
+}
+
+async function removeDummy(m: any) {
+  busy.value = true; testMsg.value = ''; testErr.value = false
+  try {
+    await $fetch(`/api/v1/staff/${m.id}`, { method: 'DELETE' })
+    testMsg.value = `Removed ${m.employee_code}`
+    await refresh()
+  } catch (err: any) { testErr.value = true; testMsg.value = err?.data?.message || err?.data?.statusMessage || 'Failed' } finally { busy.value = false }
+}
+
+async function purgeAll() {
+  busy.value = true; testMsg.value = ''; testErr.value = false
+  try {
+    const r: any = await $fetch('/api/v1/staff/purge-dummies', { method: 'POST' })
+    testMsg.value = `Removed ${r.removed} dummy staff`
+    await refresh()
+  } catch (err: any) { testErr.value = true; testMsg.value = err?.data?.message || err?.data?.statusMessage || 'Failed' } finally { busy.value = false }
+}
 
 const columns = computed(() => {
   const cols: any[] = [

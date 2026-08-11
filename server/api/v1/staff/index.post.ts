@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { compactStaff } from '../../../../core/staff/query.mjs'
 import { recordAudit } from '../../../../core/audit/record.mjs'
@@ -7,7 +8,9 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event)
   const db = getAdminClient()
 
-  const code = String(body?.employee_code || '').trim().toUpperCase()
+  const isDummy = !!body?.is_dummy
+  // Dummies can skip the code — we mint a distinct DUMMY-xxxx one.
+  const code = String(body?.employee_code || (isDummy ? `DUMMY-${randomBytes(2).toString('hex').toUpperCase()}` : '')).trim().toUpperCase()
   const name = String(body?.display_name || '').trim()
   if (!code || !name) throw apiError(400, 'employee_code and display_name are required')
 
@@ -15,6 +18,7 @@ export default defineEventHandler(async (event) => {
     workspace_id: ctx.workspaceId,
     employee_code: code,
     display_name: name,
+    is_dummy: isDummy,
     email: body.email ? String(body.email).toLowerCase().trim() : null,
     phone: body.phone || null,
     role: body.role || 'staff',
@@ -25,6 +29,8 @@ export default defineEventHandler(async (event) => {
     pt_monthly_hour_cap: body.pt_monthly_hour_cap ?? null,
     hired_on: body.hired_on || null,
   }
+  // A dummy you can immediately sign in as, for E2E — default PIN unless given.
+  if (isDummy && !body.pin) insert.pin_hash = bcrypt.hashSync('123456', 10)
   if (body.pin) {
     if (!/^\d{4,12}$/.test(String(body.pin))) throw apiError(400, 'PIN must be 4-12 digits')
     insert.pin_hash = bcrypt.hashSync(String(body.pin), 10)
