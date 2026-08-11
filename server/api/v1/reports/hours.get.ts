@@ -38,6 +38,7 @@ export default defineEventHandler(async (event) => {
   assertTeamReach(ctx, 'Store-wide hours summaries')
   const summary = await attendanceSummary(db, ctx.workspaceId, {
     store_id: q.store_id ? String(q.store_id) : undefined, from, to,
+    includeDummy: q.include_dummy === 'true',
   }, settings)
   if (canSeeCost) {
     const ids = summary.rows.map((r: any) => r.staff_id).filter(Boolean)

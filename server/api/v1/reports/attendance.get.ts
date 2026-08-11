@@ -46,6 +46,7 @@ export default defineEventHandler(async (event) => {
       break_minutes: first?.break_minutes ?? null,
       status: !first ? 'no_show' : !first.clock_out_at ? 'missing_clock_out' : lateMin && lateMin > 5 ? 'late' : 'ok',
       minutes_late: lateMin,
+      is_dummy: sh.staff?.is_dummy ?? first?.staff?.is_dummy ?? false,
     })
   }
   // Worked but unscheduled
@@ -63,17 +64,21 @@ export default defineEventHandler(async (event) => {
         break_minutes: e.break_minutes,
         status: 'unscheduled',
         minutes_late: null,
+        is_dummy: e.staff?.is_dummy || false,
       })
     }
   }
-  rows.sort((a, b) => a.work_date.localeCompare(b.work_date) || String(a.employee_code).localeCompare(String(b.employee_code)))
+  // Simulated (dummy) staff are excluded from the actual attendance record
+  // unless explicitly requested.
+  const filtered = q.include_dummy === 'true' ? rows : rows.filter((r) => !r.is_dummy)
+  filtered.sort((a, b) => a.work_date.localeCompare(b.work_date) || String(a.employee_code).localeCompare(String(b.employee_code)))
 
   if (q.format === 'csv') {
     const headers = ['work_date', 'employee_code', 'display_name', 'scheduled_start', 'scheduled_end', 'actual_in', 'actual_out', 'break_minutes', 'status', 'minutes_late']
-    const csv = [headers.join(','), ...rows.map((r) => headers.map((h) => csvEscape(r[h])).join(','))].join('\n')
+    const csv = [headers.join(','), ...filtered.map((r) => headers.map((h) => csvEscape(r[h])).join(','))].join('\n')
     setHeader(event, 'Content-Type', 'text/csv; charset=utf-8')
     setHeader(event, 'Content-Disposition', `attachment; filename="attendance_${from}_${to}.csv"`)
     return csv
   }
-  return { data: rows, from, to, total: rows.length }
+  return { data: filtered, from, to, total: filtered.length }
 })

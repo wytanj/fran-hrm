@@ -6,7 +6,7 @@ const ENTRY_COLS = 'id, store_id, staff_id, shift_id, work_date, clock_in_at, cl
 export async function listTimeEntries(db, workspaceId, { staff_id, store_id, from, to, limit = 200 }) {
   let q = db
     .from('time_entries')
-    .select(`${ENTRY_COLS}, staff:staff_id(employee_code, display_name)`, { count: 'exact' })
+    .select(`${ENTRY_COLS}, staff:staff_id(employee_code, display_name, is_dummy)`, { count: 'exact' })
     .eq('workspace_id', workspaceId)
     .order('work_date', { ascending: false })
     .order('clock_in_at', { ascending: false })
@@ -63,7 +63,7 @@ export async function listFlags(db, workspaceId, { staff_id, store_id, from, to,
  * lateness/no-show counts. Powers the MCP attendance_summary tool and the
  * reports UI without dumping raw entries into agent context.
  */
-export async function attendanceSummary(db, workspaceId, { store_id, from, to }, settings = {}) {
+export async function attendanceSummary(db, workspaceId, { store_id, from, to, includeDummy = false }, settings = {}) {
   if (!from || !to) throw new Error('from and to are required')
   let q = db
     .from('time_entries')
@@ -115,5 +115,11 @@ export async function attendanceSummary(db, workspaceId, { store_id, from, to },
     }
   }).sort((a, b) => (a.employee_code || '').localeCompare(b.employee_code || ''))
 
-  return { store_id: store_id || null, from, to, staff_count: rows.length, rows }
+  // Simulated (dummy) staff are excluded from real hours/cost unless asked for.
+  const visible = includeDummy ? rows : rows.filter((r) => !r.is_dummy)
+  return {
+    store_id: store_id || null, from, to,
+    staff_count: visible.length, rows: visible,
+    simulated_excluded: includeDummy ? 0 : rows.length - visible.length,
+  }
 }

@@ -35,7 +35,7 @@
               {{ initials(m.display_name) }}
             </span>
             <div class="min-w-0">
-              <p class="truncate text-[13px] font-semibold text-ink">{{ m.display_name }}<UiDummyTag :show="m.is_dummy" /></p>
+              <p class="truncate text-[13px] font-semibold text-ink">{{ m.display_name }}<UiDummyTag :show="m.is_dummy" /><UiAccessTag v-if="!m.is_dummy" :method="m.access_method" /></p>
               <p class="truncate text-[11.5px] text-muted">{{ m.email || m.phone || '—' }}</p>
             </div>
           </div>
@@ -74,12 +74,12 @@
       Pay rates are visible to area managers and above only.
     </p>
 
-    <!-- Testing tools: create/purge dummy staff (area manager+) -->
+    <!-- Simulated staff: model a prospective hire or seed test data (area manager+) -->
     <div v-if="isAreaManager" class="mt-6 rounded-lg border border-dashed border-brown/30 bg-peach-soft/40 p-4">
       <div class="flex flex-wrap items-center gap-2">
-        <h3 class="font-display text-[15px] font-bold text-ink">Testing tools</h3>
+        <h3 class="font-display text-[15px] font-bold text-ink">Simulated staff</h3>
         <UiDummyTag :show="true" />
-        <span class="text-[12px] text-muted">Throwaway people for end-to-end testing. Tagged everywhere; purge when done.</span>
+        <span class="text-[12px] text-muted">Model a prospective hire — or seed test data. Tagged everywhere and left out of real hours/cost; purge when done.</span>
         <button class="press ml-auto text-[12.5px] font-semibold text-brown" @click="showTesting = !showTesting">
           {{ showTesting ? 'Hide' : 'Open' }}
         </button>

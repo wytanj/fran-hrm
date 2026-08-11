@@ -46,7 +46,7 @@ export async function getRoster(db, workspaceId, { store_id, week_start, include
 export async function listShifts(db, workspaceId, { staff_id, store_id, from, to, published_only = true, limit = 200 }) {
   let q = db
     .from('shifts')
-    .select(`${SHIFT_COLS}, staff:staff_id(id, employee_code, display_name), roster:roster_id(status, week_start)`)
+    .select(`${SHIFT_COLS}, staff:staff_id(id, employee_code, display_name, is_dummy), roster:roster_id(status, week_start)`)
     .eq('workspace_id', workspaceId)
     .neq('status', 'cancelled')
     .order('work_date')

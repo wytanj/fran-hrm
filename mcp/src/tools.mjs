@@ -171,10 +171,13 @@ export const toolDefinitions = [
   {
     name: 'attendance_summary',
     description:
-      'Per-staff hours, OT, days worked and flag counts for a store (or whole company) in a window. Prefer this over paginating time_entries_list for overview questions.',
+      'Per-staff hours, OT, days worked and flag counts for a store (or whole company) in a window. Prefer this over paginating time_entries_list for overview questions. Simulated (dummy) staff are excluded by default — pass include_dummy: true to include them.',
     inputSchema: {
       type: 'object',
-      properties: { store: STORE_REF, from: DATE, to: DATE },
+      properties: {
+        store: STORE_REF, from: DATE, to: DATE,
+        include_dummy: { type: 'boolean', description: 'Include simulated/dummy staff in the totals (default false)' },
+      },
       required: ['from', 'to'],
     },
   },
@@ -677,7 +680,7 @@ export async function handleTool(name, args = {}) {
         assertManagerView('store-wide attendance summaries')
         const store = a.store ? await resolveStore(db(), ws(), a.store) : null
         const settings = await getSettings(db(), ws())
-        return jsonResult(await attendanceSummary(db(), ws(), { store_id: store?.id, from: a.from, to: a.to }, settings))
+        return jsonResult(await attendanceSummary(db(), ws(), { store_id: store?.id, from: a.from, to: a.to, includeDummy: !!a.include_dummy }, settings))
       }
 
       case 'timesheet_status': {

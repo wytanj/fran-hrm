@@ -19,6 +19,7 @@ export default defineEventHandler(async (event) => {
     employee_code: code,
     display_name: name,
     is_dummy: isDummy,
+    access_method: ['sso', 'otp', 'pin'].includes(body.access_method) ? body.access_method : 'pin',
     email: body.email ? String(body.email).toLowerCase().trim() : null,
     phone: body.phone || null,
     role: body.role || 'staff',

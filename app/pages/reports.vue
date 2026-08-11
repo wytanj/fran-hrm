@@ -10,6 +10,9 @@
           <option value="">All stores</option>
           <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.name }}</option>
         </select>
+        <label class="flex h-9 items-center gap-1.5 rounded-md border border-line bg-white px-2.5 text-[12px] font-medium text-ink-soft">
+          <input v-model="includeDummy" type="checkbox" class="h-3.5 w-3.5 accent-brown"> Include simulated
+        </label>
         <a class="press inline-flex h-9 items-center rounded-md bg-yellow px-3 text-[12.5px] font-semibold text-brown shadow-glow"
           :href="exportUrls.csv" download>CSV</a>
         <a class="press inline-flex h-9 items-center rounded-md border border-line bg-white px-3 text-[12.5px] font-semibold text-brown"
@@ -287,6 +290,7 @@ const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
 const from = ref(addDays(today, -13))
 const to = ref(today)
 const storeId = ref('')
+const includeDummy = ref(false)
 const error = ref('')
 const busy = ref(false)
 
@@ -295,9 +299,12 @@ const tab = ref(typeof route.query.tab === 'string' ? route.query.tab : 'hours')
 const { data: storesRes } = await useFetch<any>('/api/v1/stores')
 const stores = computed<any[]>(() => (storesRes.value?.data || []).filter((s: any) => s.kind === 'store'))
 
-const query = computed(() => ({ from: from.value, to: to.value, store_id: storeId.value || undefined }))
+const query = computed(() => ({
+  from: from.value, to: to.value, store_id: storeId.value || undefined,
+  include_dummy: includeDummy.value ? 'true' : undefined,
+}))
 
-const { data: hoursRes, pending: hoursPending } = await useFetch<any>('/api/v1/reports/hours', { query, watch: [from, to, storeId] })
+const { data: hoursRes, pending: hoursPending } = await useFetch<any>('/api/v1/reports/hours', { query, watch: [from, to, storeId, includeDummy] })
 const summary = computed<any>(() => hoursRes.value?.data)
 
 const { data: flagsRes, refresh: refreshFlags, pending: flagsPending } = await useFetch<any>('/api/v1/flags', { query, watch: [from, to, storeId] })
@@ -371,6 +378,7 @@ const exportUrls = computed(() => {
   const build = (format: string) => {
     const p = new URLSearchParams({ from: from.value, to: to.value, format })
     if (storeId.value) p.set('store_id', storeId.value)
+    if (includeDummy.value) p.set('include_dummy', 'true')
     return `${base}?${p}`
   }
   return { csv: build('csv'), json: build('json') }

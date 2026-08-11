@@ -5,7 +5,7 @@ import { recordAudit } from '../../../../core/audit/record.mjs'
 const EDITABLE = [
   'display_name', 'email', 'phone', 'role', 'employment_type', 'employment_status',
   'home_store_id', 'hourly_rate_cents', 'pt_weekly_hour_cap', 'pt_monthly_hour_cap',
-  'hired_on', 'terminated_on', 'pos_access_enabled',
+  'hired_on', 'terminated_on', 'pos_access_enabled', 'access_method',
 ]
 
 export default defineEventHandler(async (event) => {
@@ -16,6 +16,9 @@ export default defineEventHandler(async (event) => {
 
   const patch: Record<string, any> = {}
   for (const k of EDITABLE) if (body[k] !== undefined) patch[k] = body[k]
+  if (patch.access_method !== undefined && !['sso', 'otp', 'pin'].includes(patch.access_method)) {
+    throw apiError(400, 'access_method must be sso, otp or pin')
+  }
   if (body.pin) {
     if (!/^\d{4,12}$/.test(String(body.pin))) throw apiError(400, 'PIN must be 4-12 digits')
     patch.pin_hash = bcrypt.hashSync(String(body.pin), 10)
