@@ -1,7 +1,7 @@
 // Session state: who is signed in, hydrated once per app load from
 // /api/auth/me. Role helpers mirror the server's ROLE_LEVEL ordering.
 const ROLE_LEVEL: Record<string, number> = {
-  staff: 1, supervisor: 2, store_manager: 3, area_manager: 4, hq_admin: 5,
+  staff: 1, supervisor: 2, store_manager: 3, area_manager: 4, finance: 4, hq_admin: 5,
 }
 
 export interface SessionStaff {

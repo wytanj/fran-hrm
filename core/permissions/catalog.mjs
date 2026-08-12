@@ -37,13 +37,14 @@ export const SCOPES = [
 
 export const SCOPE_KEYS = SCOPES.map((s) => s.scope)
 
-export const ROLES = ['staff', 'supervisor', 'store_manager', 'area_manager', 'hq_admin']
+export const ROLES = ['staff', 'supervisor', 'store_manager', 'area_manager', 'finance', 'hq_admin']
 
 export const ROLE_LABELS = {
   staff: 'Staff',
   supervisor: 'Supervisor',
   store_manager: 'Store Manager',
   area_manager: 'Area Manager',
+  finance: 'Finance',
   hq_admin: 'HQ Admin',
 }
 
@@ -60,6 +61,9 @@ export const DEFAULT_ROLE_MATRIX = {
   supervisor: ['staff:read', 'org:read', 'roster:read', 'roster:write', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'reports:read'],
   store_manager: ['staff:read', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read'],
   area_manager: ['staff:read', 'staff:write', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read', 'reports:cost', 'payroll:lock'],
+  // Finance: sees everything relevant to pay and can lock payroll, but edits no
+  // rosters/staff and approves no leave. Read-heavy specialist admin.
+  finance: ['staff:read', 'org:read', 'roster:read', 'roster:history', 'attendance:read', 'leave:read', 'reports:read', 'reports:cost', 'payroll:lock'],
   hq_admin: [...SCOPE_KEYS.filter((s) => s !== 'pos:sync')],
 }
 

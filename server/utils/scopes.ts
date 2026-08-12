@@ -43,6 +43,7 @@ export const ROLE_LEVEL: Record<string, number> = {
   supervisor: 2,
   store_manager: 3,
   area_manager: 4,
+  finance: 4, // specialist admin: manager-level visibility, scopes restrict the rest
   hq_admin: 5,
 }
 

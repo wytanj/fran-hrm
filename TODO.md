@@ -2,27 +2,25 @@
 
 _Last updated: 2026-08-11_
 
-## 🔴 In progress — Google SSO for teammates (dual-auth)
+## 🔴 In progress — SSO → create-workspace (multi-tenant)
 
-Onboard real people "fran-skums style": invite link + **Google SSO** for dashboard users, **keep code+PIN** for floor clocking. Invite-gated for `heyfran.com` + specific test Gmails. Runbook: [docs/TEAMMATE_ONBOARDING.md](docs/TEAMMATE_ONBOARDING.md).
+Google (Supabase Auth) for admins/managers/finance; **code+PIN kept** for floor. Create a workspace = restricted (`heyfran.com` + allowlist); joining = invite-only; **finance** is a first-class role; one workspace per Google account for now. Full method + edge cases: [docs/SSO_WORKSPACE_ONBOARDING.md](docs/SSO_WORKSPACE_ONBOARDING.md).
 
-**BLOCKED on external setup (owner, ~15 min — see runbook §"One-time platform setup"):**
-1. [ ] Google Cloud → create OAuth Web client; redirect `https://<supabase-ref>.supabase.co/auth/v1/callback`
-2. [ ] Supabase → Auth → Providers → Google: paste client id/secret, enable; Site URL `https://fran-hrm-lime.vercel.app`
-3. [ ] Provide the Supabase **anon/publishable key** → add as `SUPABASE_ANON_KEY` (.env + Vercel)
+**Stage 1 — foundation (DONE, migrations `016`/`017`):**
+- [x] `staff.auth_user_id`, `workspaces.created_by`, `workspace_invites` table
+- [x] `finance` role added to the enum + catalog + default matrix + seeded into the existing workspace
+- [x] `access_method` indicator already in place (mig `015`) — SSO login → `sso`, accepted invite → `otp`
 
-**Build sequence (starts once unblocked; nothing deploys until verified against a real Google login):**
-- [ ] Add `@nuxtjs/supabase` + anon key; wire client
-- [ ] Migration `016`: `workspace_invites` (email, role, token, expiry, accepted binding) — note `012`–`015` are taken
-- [ ] Wire the auth flows to set `staff.access_method` (mig `015` already added the indicator): a completed invite → `otp`, a Google SSO sign-in → `sso`
-- [ ] `/auth/login` (Google) + `/auth/confirm` callback; keep `/login` PIN for floor
-- [ ] Dual-auth: `requireActor` / `getSessionStaff` / `useSession` / middleware accept Google session **or** PIN cookie; map Google email → staff role
-- [ ] Invite create endpoint + accept/bind flow + Team invite UI (`email+role → /invite/{token}`)
-- [ ] Gating: `heyfran.com` + test Gmails; unknown email → "ask an owner to invite you"
-- [ ] Point MCP/Claude connector sign-in at the Google session
-- [ ] Verify end-to-end, then commit + deploy
+**Stage 2 — auth wiring (BLOCKED on owner adding `SUPABASE_ANON_KEY` to `.env` + Vercel):**
+- [ ] Add `@nuxtjs/supabase`; wire client (Google redirect); keep `/login` PIN for floor
+- [ ] `/auth/login` (Google) + `/auth/confirm` callback
+- [ ] Dual-auth in `requireActor` / `getSessionStaff` / `useSession` / middleware (Supabase session ↔ PIN cookie; map `auth_user_id` → staff → workspace; set `access_method='sso'`)
+- [ ] Membership resolver + login decision (member / invite / existing-PIN link / create-if-allowlisted / else "ask an owner")
+- [ ] `create-workspace` (allowlist-gated) + `accept-invite` endpoints; invite UI (`email+role → /invite/{token}`)
+- [ ] Point the MCP/Claude connector sign-in at the Google session
+- [ ] Verify end-to-end with a real Google login **before** it touches the live PIN path; then deploy
 
-**Open decision:** mirror skums exactly (Supabase Auth + Google) — chosen — vs a lighter **custom Google OAuth** that keeps the existing session model (no Supabase Auth / no anon key). Revisit if enabling Supabase Auth is unwanted.
+**Note:** migrations `012`–`017` are taken. Finance UI currently rides `ROLE_LEVEL` (manager-level visibility); moving the manager UI gates from role-level to scope-based is a follow-up so finance sees exactly its permitted screens.
 
 ## ✅ Recently done (all deployed to fran-hrm-lime)
 - **Staff status indicators** — (1) simulated staff now **excluded from hours/cost reports + exports by default**, with an "Include simulated" toggle (`?include_dummy=true` on REST hours/attendance; `include_dummy` on MCP `attendance_summary`); (2) **access-method tag** for real staff — `staff.access_method` (mig `015`: `sso`/`otp`/`pin`, default `pin`), shown as an SSO/OTP/PIN pill on Team. Data-model indication only; OTP (Twilio) + SSO sign-in flows land with the SSO epic. "Dummy" box relabelled **Simulated staff**.
