@@ -42,7 +42,15 @@ export function compactStaff(row, { includeRate = false } = {}) {
     hired_on: row.hired_on,
     terminated_on: row.terminated_on,
   }
-  if (includeRate) out.hourly_rate_cents = row.hourly_rate_cents
+  if (includeRate) {
+    // Sensitive: pay + statutory/CPF identity. Same gate as pay rate
+    // (area_manager+), so NRIC/DOB/address never ride a general staff read.
+    out.hourly_rate_cents = row.hourly_rate_cents
+    out.nric = row.nric ?? null
+    out.date_of_birth = row.date_of_birth ?? null
+    out.postal_code = row.postal_code ?? null
+    out.unit_number = row.unit_number ?? null
+  }
   return out
 }
 

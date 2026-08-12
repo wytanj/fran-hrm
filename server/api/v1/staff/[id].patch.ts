@@ -6,6 +6,7 @@ const EDITABLE = [
   'display_name', 'email', 'phone', 'role', 'employment_type', 'employment_status',
   'home_store_id', 'hourly_rate_cents', 'pt_weekly_hour_cap', 'pt_monthly_hour_cap',
   'hired_on', 'terminated_on', 'pos_access_enabled', 'access_method',
+  'nric', 'date_of_birth', 'postal_code', 'unit_number',
 ]
 
 export default defineEventHandler(async (event) => {

@@ -31,6 +31,12 @@ export default defineEventHandler(async (event) => {
     pt_weekly_hour_cap: body.pt_weekly_hour_cap ?? null,
     pt_monthly_hour_cap: body.pt_monthly_hour_cap ?? null,
     hired_on: body.hired_on || null,
+    // Statutory / CPF identity (SG). Mandatory-on-create is enforced by the
+    // create flow, not here, so existing/dummy records stay valid.
+    nric: body.nric ? String(body.nric).trim().toUpperCase() : null,
+    date_of_birth: body.date_of_birth || null,
+    postal_code: body.postal_code ? String(body.postal_code).trim() : null,
+    unit_number: body.unit_number ? String(body.unit_number).trim() : null,
   }
   // A dummy you can immediately sign in as, for E2E — default PIN unless given.
   if (isDummy && !body.pin) insert.pin_hash = bcrypt.hashSync('123456', 10)
