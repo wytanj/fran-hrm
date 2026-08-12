@@ -74,6 +74,44 @@
       Pay rates are visible to area managers and above only.
     </p>
 
+    <!-- Invite a teammate (Google SSO) — area manager+ -->
+    <div v-if="isAreaManager" class="mt-6 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
+      <h3 class="font-display text-[15px] font-bold text-ink">Invite a teammate</h3>
+      <p class="mt-1 text-[12px] text-muted">
+        They join this workspace when they sign in with Google using this email — no link needed. For managers, finance and admins; floor staff use a PIN.
+      </p>
+      <div class="mt-3 flex flex-wrap items-end gap-2.5">
+        <label class="block">
+          <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Email</span>
+          <input v-model="invite.email" type="email" placeholder="name@heyfran.com"
+            class="h-9 w-60 rounded-md border border-line bg-white px-2.5 text-[13px]">
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Role</span>
+          <select v-model="invite.role" class="h-9 rounded-md border border-line bg-white px-2 text-[13px]">
+            <option value="staff">Staff</option>
+            <option value="supervisor">Supervisor</option>
+            <option value="store_manager">Store Manager</option>
+            <option value="area_manager">Area Manager</option>
+            <option value="finance">Finance</option>
+            <option value="hq_admin">HQ Admin</option>
+          </select>
+        </label>
+        <UiButton size="sm" :loading="inviting" :disabled="!invite.email.includes('@')" @click="sendInvite">Send invite</UiButton>
+        <span v-if="inviteMsg" class="text-[12px]" :class="inviteErr ? 'text-danger' : 'text-success'">{{ inviteMsg }}</span>
+      </div>
+      <div v-if="invites.length" class="mt-3">
+        <p class="mb-1 text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">Pending invites</p>
+        <div v-for="i in invites" :key="i.id" class="flex items-center gap-2 border-b border-line-soft py-1.5 last:border-0 text-[12.5px]">
+          <span class="font-semibold text-ink">{{ i.email }}</span>
+          <UiBadge tone="muted">{{ roleLabel(i.role) }}</UiBadge>
+          <UiBadge v-if="i.expired" tone="danger">expired</UiBadge>
+          <span class="text-[11px] text-muted">invited by {{ i.invited_by || '—' }}</span>
+          <button class="press ml-auto text-[12px] font-semibold text-danger" @click="revokeInvite(i)">Revoke</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Simulated staff: model a prospective hire or seed test data (area manager+) -->
     <div v-if="isAreaManager" class="mt-6 rounded-lg border border-dashed border-brown/30 bg-peach-soft/40 p-4">
       <div class="flex flex-wrap items-center gap-2">
@@ -165,6 +203,29 @@ const team = computed<any[]>(() => res.value?.data || [])
 const { data: storesRes } = await useFetch<any>('/api/v1/stores', { lazy: true })
 const stores = computed<any[]>(() => (storesRes.value?.data || []).filter((s: any) => s.kind === 'store'))
 const dummies = computed<any[]>(() => team.value.filter((m) => m.is_dummy))
+
+// Invites (area manager+ only — the fetch is gated so supervisors don't 403)
+const { data: invitesRes, refresh: refreshInvites } = await useFetch<any>('/api/v1/workspace-invites', {
+  lazy: true, default: () => ({ data: [] }), immediate: computed(() => isAreaManager.value) as any,
+})
+const invites = computed<any[]>(() => invitesRes.value?.data || [])
+const invite = reactive({ email: '', role: 'staff' })
+const inviting = ref(false)
+const inviteMsg = ref('')
+const inviteErr = ref(false)
+async function sendInvite() {
+  inviting.value = true; inviteMsg.value = ''; inviteErr.value = false
+  try {
+    const r: any = await $fetch('/api/v1/workspace-invites', { method: 'POST', body: { email: invite.email.trim(), role: invite.role } })
+    inviteMsg.value = r.note || 'Invited.'
+    invite.email = ''
+    await refreshInvites()
+  } catch (err: any) { inviteErr.value = true; inviteMsg.value = err?.data?.message || err?.data?.statusMessage || 'Failed' } finally { inviting.value = false }
+}
+async function revokeInvite(i: any) {
+  await $fetch(`/api/v1/workspace-invites/${i.id}`, { method: 'DELETE' }).catch(() => {})
+  await refreshInvites()
+}
 
 const showTesting = ref(false)
 const creating = ref(false)

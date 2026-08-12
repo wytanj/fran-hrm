@@ -41,18 +41,28 @@ export async function loginStaff(event: any, identifier: string, pin: string) {
     throw fail()
   }
 
+  await db.from('staff').update({ failed_attempts: 0, locked_until: null }).eq('id', staff.id)
+  await issueStaffSession(event, staff)
+  return staff
+}
+
+/**
+ * Mint a fran_hrm_session cookie for a staff member. Shared by PIN login and
+ * the SSO bridge — SSO verifies a Google token, resolves the member, then calls
+ * this, so the rest of the app (requireActor) never learns about Supabase Auth.
+ */
+export async function issueStaffSession(event: any, staff: { id: string; workspace_id: string }) {
+  const db = getAdminClient()
   const raw = randomBytes(32).toString('base64url')
   const expires = new Date(Date.now() + SESSION_DAYS * 86400000)
-  const { error: sessErr } = await db.from('staff_sessions').insert({
+  const { error } = await db.from('staff_sessions').insert({
     workspace_id: staff.workspace_id,
     staff_id: staff.id,
     token_hash: hashToken(raw),
     user_agent: getHeader(event, 'user-agent')?.slice(0, 300) || null,
     expires_at: expires.toISOString(),
   })
-  if (sessErr) throw apiError(500, sessErr.message)
-  await db.from('staff').update({ failed_attempts: 0, locked_until: null }).eq('id', staff.id)
-
+  if (error) throw apiError(500, error.message)
   setCookie(event, COOKIE, raw, {
     httpOnly: true,
     sameSite: 'lax',
@@ -60,7 +70,21 @@ export async function loginStaff(event: any, identifier: string, pin: string) {
     path: '/',
     expires,
   })
-  return staff
+}
+
+/** Verify a Supabase (Google) access token and return the identity, or null. */
+export async function getSsoUser(accessToken: string) {
+  if (!accessToken) return null
+  const db = getAdminClient()
+  const { data, error } = await db.auth.getUser(accessToken)
+  if (error || !data?.user?.email) return null
+  const u = data.user
+  const meta: any = u.user_metadata || {}
+  return {
+    id: u.id,
+    email: String(u.email).toLowerCase().trim(),
+    name: meta.full_name || meta.name || String(u.email).split('@')[0],
+  }
 }
 
 export async function getSessionStaff(event: any) {
