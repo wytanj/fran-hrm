@@ -9,10 +9,12 @@ export default defineEventHandler(async (event) => {
   const db = getAdminClient()
 
   const isDummy = !!body?.is_dummy
-  // Dummies can skip the code — we mint a distinct DUMMY-xxxx one.
-  const code = String(body?.employee_code || (isDummy ? `DUMMY-${randomBytes(2).toString('hex').toUpperCase()}` : '')).trim().toUpperCase()
+  // Codes are optional — we mint one (DUMMY-xxxx for simulated, EMP-xxxx for
+  // real) when left blank, so adding a hire is one less field to fill.
+  const rawCode = String(body?.employee_code || '').trim()
+  const code = (rawCode || `${isDummy ? 'DUMMY' : 'EMP'}-${randomBytes(2).toString('hex').toUpperCase()}`).toUpperCase()
   const name = String(body?.display_name || '').trim()
-  if (!code || !name) throw apiError(400, 'employee_code and display_name are required')
+  if (!name) throw apiError(400, 'display_name is required')
 
   const insert: Record<string, any> = {
     workspace_id: ctx.workspaceId,

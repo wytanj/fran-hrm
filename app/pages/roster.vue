@@ -84,7 +84,7 @@
           <select v-model="newShift.staff_id" class="h-9 w-full rounded-md border border-line bg-white px-2 text-[13px]">
             <option value="">— open shift (PT pool) —</option>
             <option v-for="m in members" :key="m.id" :value="m.id">
-              {{ m.display_name }} · {{ m.employment_type === 'part_time' ? 'PT' : 'FT' }}
+              {{ m.display_name }} · {{ empTypeShort(m.employment_type) }}
             </option>
           </select>
         </label>
@@ -182,7 +182,7 @@
             <td class="sticky left-0 z-10 bg-white px-3.5 py-2">
               <p class="text-[13px] font-semibold text-ink">{{ row.name }}<UiDummyTag :show="row.dummy" /></p>
               <p class="text-[11px] text-muted">
-                {{ row.employee_code }}<span v-if="row.type"> · {{ row.type === 'part_time' ? 'PT' : 'FT' }}</span>
+                {{ row.employee_code }}<span v-if="row.type"> · {{ empTypeShort(row.type) }}</span>
                 <span v-if="row.cap" class="text-muted"> · cap {{ row.cap }}h</span>
               </p>
             </td>

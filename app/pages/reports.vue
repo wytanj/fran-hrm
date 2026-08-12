@@ -51,9 +51,7 @@
             <span class="ml-1.5 text-[11.5px] text-muted">{{ r.employee_code }}</span>
           </td>
           <td class="px-3.5 py-2.5">
-            <UiBadge :tone="r.employment_type === 'part_time' ? 'accent' : 'muted'">
-              {{ r.employment_type === 'part_time' ? 'PT' : 'FT' }}
-            </UiBadge>
+            <UiBadge :tone="empTypeTone(r.employment_type)">{{ empTypeShort(r.employment_type) }}</UiBadge>
           </td>
           <td class="px-3.5 py-2.5 text-right font-semibold tabular-nums">{{ r.total_hours }}</td>
           <td class="px-3.5 py-2.5 text-right tabular-nums text-muted">{{ r.days_worked }}</td>

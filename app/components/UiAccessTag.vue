@@ -10,9 +10,9 @@
 const props = defineProps<{ method?: string }>()
 
 const MAP: Record<string, { label: string; cls: string; title: string }> = {
-  sso: { label: 'SSO', cls: 'bg-success-soft text-success', title: 'Workspace member — signs in with Google SSO' },
+  sso: { label: 'SSO', cls: 'bg-success-soft text-success', title: 'Google SSO member (admin / manager / finance)' },
   otp: { label: 'OTP', cls: 'bg-blue-soft text-brown', title: 'Invited — phone one-time-password access (Twilio)' },
-  pin: { label: 'PIN', cls: 'bg-surface-sunken text-muted', title: 'Signs in with employee code + PIN' },
+  pin: { label: 'Employee', cls: 'bg-surface-sunken text-muted', title: 'Local employee — signs in with code + PIN' },
 }
 const entry = computed(() => MAP[props.method || 'pin'])
 </script>

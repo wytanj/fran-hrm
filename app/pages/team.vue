@@ -9,6 +9,7 @@
           <option value="">All types</option>
           <option value="full_time">Full-time</option>
           <option value="part_time">Part-time</option>
+          <option value="contractor">Contractor</option>
         </select>
         <select v-model="statusFilter" class="h-9 rounded-md border border-line bg-white px-2.5 text-[13px] font-medium">
           <option value="active">Active</option>
@@ -48,9 +49,7 @@
         </td>
         <td class="px-3.5 py-2.5 text-muted">{{ roleLabel(m.role) }}</td>
         <td class="px-3.5 py-2.5">
-          <UiBadge :tone="m.employment_type === 'part_time' ? 'accent' : 'muted'">
-            {{ m.employment_type === 'part_time' ? 'PT' : 'FT' }}
-          </UiBadge>
+          <UiBadge :tone="empTypeTone(m.employment_type)">{{ empTypeShort(m.employment_type) }}</UiBadge>
         </td>
         <td class="px-3.5 py-2.5 text-[12px] text-muted">{{ m.home_store?.code || '—' }}</td>
         <td class="px-3.5 py-2.5 text-right tabular-nums text-muted">
@@ -69,10 +68,62 @@
     </UiTable>
     </UiBusy>
 
-    <p class="mt-2 text-[11.5px] text-muted">
-      Adding or editing real staff requires an area manager and is done via the API — see the project README.
-      Pay rates are visible to area managers and above only.
-    </p>
+    <p class="mt-2 text-[11.5px] text-muted">Pay rates are visible to area managers and above only.</p>
+
+    <!-- Add staff directly (no Google SSO needed) — area manager+ -->
+    <div v-if="isAreaManager" class="mt-6 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
+      <h3 class="font-display text-[15px] font-bold text-ink">Add staff</h3>
+      <p class="mt-1 text-[12px] text-muted">
+        Create an employee directly — no Google invite required. Give a PIN if they'll clock in / sign in; leave the code blank to auto-generate.
+        Admins/managers/finance can also sign in with Google later using their email.
+      </p>
+      <div class="mt-3 flex flex-wrap items-end gap-2.5">
+        <label class="block">
+          <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Name</span>
+          <input v-model="newStaff.name" placeholder="Full name" class="h-9 w-44 rounded-md border border-line bg-white px-2.5 text-[13px]">
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Code</span>
+          <input v-model="newStaff.code" placeholder="auto" class="h-9 w-24 rounded-md border border-line bg-white px-2.5 font-mono text-[12px]">
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Role</span>
+          <select v-model="newStaff.role" class="h-9 rounded-md border border-line bg-white px-2 text-[13px]">
+            <option value="staff">Staff</option>
+            <option value="supervisor">Supervisor</option>
+            <option value="store_manager">Store Manager</option>
+            <option value="area_manager">Area Manager</option>
+            <option value="finance">Finance</option>
+            <option value="hq_admin">HQ Admin</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Type</span>
+          <select v-model="newStaff.type" class="h-9 rounded-md border border-line bg-white px-2 text-[13px]">
+            <option value="full_time">Full-time</option>
+            <option value="part_time">Part-time</option>
+            <option value="contractor">Contractor</option>
+          </select>
+        </label>
+        <label v-if="stores.length" class="block">
+          <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Store</span>
+          <select v-model="newStaff.store" class="h-9 rounded-md border border-line bg-white px-2 text-[13px]">
+            <option value="">—</option>
+            <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.name }}</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Email</span>
+          <input v-model="newStaff.email" type="email" placeholder="optional" class="h-9 w-48 rounded-md border border-line bg-white px-2.5 text-[13px]">
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-[11px] font-semibold text-ink-soft">PIN</span>
+          <input v-model="newStaff.pin" inputmode="numeric" placeholder="optional" class="h-9 w-24 rounded-md border border-line bg-white px-2.5 text-[13px]">
+        </label>
+        <UiButton size="sm" :loading="addingStaff" :disabled="!newStaff.name.trim()" @click="createStaff">Add staff</UiButton>
+        <span v-if="staffMsg" class="text-[12px]" :class="staffErr ? 'text-danger' : 'text-success'">{{ staffMsg }}</span>
+      </div>
+    </div>
 
     <!-- Invite a teammate (Google SSO) — area manager+ -->
     <div v-if="isAreaManager" class="mt-6 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
@@ -145,6 +196,7 @@
             <select v-model="dummy.type" class="h-9 rounded-md border border-line bg-white px-2 text-[13px]">
               <option value="full_time">Full-time</option>
               <option value="part_time">Part-time</option>
+              <option value="contractor">Contractor</option>
             </select>
           </label>
           <label v-if="stores.length" class="block">
@@ -203,6 +255,32 @@ const team = computed<any[]>(() => res.value?.data || [])
 const { data: storesRes } = await useFetch<any>('/api/v1/stores', { lazy: true })
 const stores = computed<any[]>(() => (storesRes.value?.data || []).filter((s: any) => s.kind === 'store'))
 const dummies = computed<any[]>(() => team.value.filter((m) => m.is_dummy))
+
+// Add real staff directly (no Google SSO invite required)
+const newStaff = reactive({ name: '', code: '', role: 'staff', type: 'full_time', store: '', email: '', pin: '' })
+const addingStaff = ref(false)
+const staffMsg = ref('')
+const staffErr = ref(false)
+async function createStaff() {
+  addingStaff.value = true; staffMsg.value = ''; staffErr.value = false
+  try {
+    const r: any = await $fetch('/api/v1/staff', {
+      method: 'POST',
+      body: {
+        display_name: newStaff.name.trim(),
+        employee_code: newStaff.code.trim() || undefined,
+        role: newStaff.role,
+        employment_type: newStaff.type,
+        home_store_id: newStaff.store || undefined,
+        email: newStaff.email.trim() || undefined,
+        pin: newStaff.pin.trim() || undefined,
+      },
+    })
+    staffMsg.value = `Added ${r.data?.display_name} (${r.data?.employee_code})`
+    newStaff.name = ''; newStaff.code = ''; newStaff.email = ''; newStaff.pin = ''
+    await refresh()
+  } catch (err: any) { staffErr.value = true; staffMsg.value = err?.data?.message || err?.data?.statusMessage || 'Failed' } finally { addingStaff.value = false }
+}
 
 // Invites (area manager+ only — the fetch is gated so supervisors don't 403)
 const { data: invitesRes, refresh: refreshInvites } = await useFetch<any>('/api/v1/workspace-invites', {
