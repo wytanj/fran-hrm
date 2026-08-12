@@ -11,7 +11,8 @@ Google (Supabase Auth) for admins/managers/finance; **code+PIN kept** for floor.
 - [x] `finance` role added to the enum + catalog + default matrix + seeded into the existing workspace
 - [x] `access_method` indicator already in place (mig `015`) — SSO login → `sso`, accepted invite → `otp`
 
-**Stage 2 — auth wiring (BLOCKED on owner adding `SUPABASE_ANON_KEY` to `.env` + Vercel):**
+**Stage 2 — auth wiring (BLOCKED on owner adding `SUPABASE_ANON_KEY` + `WORKSPACE_CREATE_ALLOWLIST=heyfran.com,wytanj@gmail.com` to `.env` + Vercel):**
+_(Two workspaces planned: heyfran.com = real; wytanj@gmail.com = throwaway sandbox. Isolated by design.)_
 - [ ] Add `@nuxtjs/supabase`; wire client (Google redirect); keep `/login` PIN for floor
 - [ ] `/auth/login` (Google) + `/auth/confirm` callback
 - [ ] Dual-auth in `requireActor` / `getSessionStaff` / `useSession` / middleware (Supabase session ↔ PIN cookie; map `auth_user_id` → staff → workspace; set `access_method='sso'`)

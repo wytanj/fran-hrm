@@ -1,7 +1,14 @@
 # SSO → create-workspace onboarding (the method)
 
 **As of:** 2026-08-12
-**Decisions:** create a workspace = restricted to `heyfran.com` + an allowlist; joining an existing workspace = invite-only; **finance** is a first-class role; one workspace per Google account for now.
+**Decisions:** create a workspace = restricted to an allowlist; joining an existing workspace = invite-only; **finance** is a first-class role; one workspace per Google account for now.
+
+**Create-workspace allowlist (env-configurable, comma-separated domains + emails):**
+`WORKSPACE_CREATE_ALLOWLIST = heyfran.com, wytanj@gmail.com`
+- `heyfran.com` — the domain: any `@heyfran.com` Google account can create the real org and invite finance/managers.
+- `wytanj@gmail.com` — explicit address: a throwaway **sandbox** workspace to dump and try things. Fully isolated from the heyfran.com workspace by design.
+
+Two *different* accounts → two workspaces, so "one workspace per account" holds. Keeping the allowlist in env means adding/removing testers needs no deploy.
 
 ## Model
 
@@ -46,4 +53,5 @@ Finance sees everything relevant to pay and can **lock payroll**, but edits no r
 
 ## What the owner still needs to do
 
-Add the Supabase **anon / publishable key** as `SUPABASE_ANON_KEY` in `.env` and Vercel → Project Settings → Environment Variables. `SUPABASE_URL` is already set. Google provider + OAuth client are configured on the Supabase/Google side.
+1. Add the Supabase **anon / publishable key** as `SUPABASE_ANON_KEY` in `.env` and Vercel → Project Settings → Environment Variables. `SUPABASE_URL` is already set. Google provider + OAuth client are configured on the Supabase/Google side.
+2. Set `WORKSPACE_CREATE_ALLOWLIST=heyfran.com,wytanj@gmail.com` (env, both `.env` and Vercel). Add more testers here anytime without a deploy.
