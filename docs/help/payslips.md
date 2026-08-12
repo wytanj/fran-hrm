@@ -27,7 +27,7 @@ Even after a payslip is signed off, you can still add comments — the discussio
 
 On **Payroll** (finance and HQ only):
 
-1. **Create** a draft: pick the person and period, enter basic salary, allowances, deductions, overtime and CPF. Gross and net are worked out for you.
+1. **Create** a draft: pick the person and period, enter the **monthly** basic salary, allowances, deductions, overtime and CPF. Gross and net are worked out for you. The monthly basic is **prorated automatically** for any approved **no-pay leave or sabbatical** in the period (paid leave doesn't reduce it) — the payslip notes show the proration.
 2. Open the draft and **Issue** it — that's your sign-off, and the figures lock.
 3. The staff member acknowledges or disputes it.
 4. If disputed, discuss in the thread and **Revert to draft** to correct and re-issue.

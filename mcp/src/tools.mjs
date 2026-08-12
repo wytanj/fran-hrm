@@ -27,6 +27,7 @@ import {
 import { recordAudit } from '../../core/audit/record.mjs'
 import { rosterHistory } from '../../core/audit/history.mjs'
 import { getPayrollSettings, updatePayrollSettings, payrollSettingsHistory } from '../../core/payroll/settings.mjs'
+import { computeMonthlyProration } from '../../core/payroll/compute.mjs'
 import { listZones } from '../../core/zones/query.mjs'
 
 const DATE = { type: 'string', description: 'YYYY-MM-DD' }
@@ -426,6 +427,20 @@ export const toolDefinitions = [
         constraints: { type: 'object' },
       },
       required: ['name', 'constraints'],
+    },
+  },
+  {
+    name: 'payroll_compute',
+    description: 'Prorate a monthly salary for a pay period, netting out approved NO-PAY leave and sabbaticals (paid leave does not cut pay). Payroll presumes a monthly rate; this is how you honour unpaid absences. Returns working days, no-pay days, and the prorated basic. Finance/HQ.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        staff: STAFF_REF,
+        period_start: { ...DATE, description: 'Pay period start (usually month start)' },
+        period_end: { ...DATE, description: 'Pay period end (usually month end)' },
+        monthly_basic_cents: { type: 'number', description: 'Full monthly basic salary, in cents' },
+      },
+      required: ['staff', 'period_start', 'period_end', 'monthly_basic_cents'],
     },
   },
   {
@@ -1116,6 +1131,15 @@ export async function handleTool(name, args = {}) {
             warnings: validated.warnings,
             explained: explainConstraints(validated.constraints),
           })
+      }
+
+      case 'payroll_compute': {
+        requireScope('payroll:process')
+        const staff = await resolveStaff(db(), ws(), a.staff)
+        return jsonResult(await computeMonthlyProration(db(), ws(), {
+          staffId: staff.id, periodStart: a.period_start, periodEnd: a.period_end,
+          monthlyBasicCents: Number(a.monthly_basic_cents) || 0,
+        }))
       }
 
       case 'payroll_settings_get': {

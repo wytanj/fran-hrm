@@ -2,6 +2,7 @@
 // log. Shared by REST (and later MCP). Routes enforce who may call what; this
 // layer owns the shape, the totals and the status transitions.
 import { randomBytes } from 'node:crypto'
+import { computeMonthlyProration } from './compute.mjs'
 
 const num = (v) => Math.round(Number(v) || 0)
 const sumItems = (arr) => (Array.isArray(arr) ? arr : []).reduce((s, i) => s + num(i?.cents), 0)
@@ -45,6 +46,23 @@ export async function createPayslip(db, workspaceId, input, { actorStaffId = nul
   ])
   if (!staff) throw new Error('Staff member not found in this workspace')
 
+  // Payroll presumes a monthly salary: if a monthly basic is given, prorate it
+  // for approved no-pay leave / sabbatical in the period. Same path for UI, API
+  // and MCP, so the rule can't diverge.
+  let effective = input
+  let proration = null
+  if (input.monthly_basic_cents != null && input.monthly_basic_cents !== '') {
+    proration = await computeMonthlyProration(db, workspaceId, {
+      staffId: staff.id, periodStart: input.period_start, periodEnd: input.period_end,
+      monthlyBasicCents: input.monthly_basic_cents,
+    })
+    effective = { ...input, basic_salary_cents: proration.prorated_basic_cents }
+    if (proration.no_pay_days > 0) {
+      const note = `Basic prorated for ${proration.no_pay_days} no-pay day(s) of ${proration.working_days} working days (monthly ${(proration.monthly_basic_cents / 100).toFixed(2)}).`
+      effective.notes = [input.notes, note].filter(Boolean).join(' ')
+    }
+  }
+
   const { data, error } = await db.from('payslips').insert({
     workspace_id: workspaceId,
     staff_id: staff.id,
@@ -53,10 +71,10 @@ export async function createPayslip(db, workspaceId, input, { actorStaffId = nul
     employee_name: staff.display_name,
     status: 'draft',
     created_by: actorStaffId,
-    ...normalise(input),
+    ...normalise(effective),
   }).select().single()
   if (error) throw new Error(error.message)
-  return data
+  return { ...data, proration }
 }
 
 export async function updateDraft(db, workspaceId, id, patch) {

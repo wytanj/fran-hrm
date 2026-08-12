@@ -55,6 +55,7 @@ export const TOOL_SCOPE_CATALOG = {
   constraint_set_save: { scope: 'roster:write', action: 'Save a reusable constraint set', privileged: true },
 
   // Payroll control plane — CPF/EOR pay settings. Finance/HQ only; writes logged.
+  payroll_compute: { scope: 'payroll:process', action: 'Prorate a monthly salary for approved no-pay leave / sabbatical in a period' },
   payroll_settings_get: { scope: 'payroll:settings', action: 'Read CPF/EOR pay settings' },
   payroll_settings_update: { scope: 'payroll:settings', action: 'Update CPF/EOR pay settings (logged to the control plane)', privileged: true },
   payroll_settings_history: { scope: 'payroll:settings', action: 'The payroll-settings change log (control plane)' },

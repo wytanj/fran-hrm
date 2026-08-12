@@ -30,7 +30,7 @@
           </div>
 
           <div class="mt-3 grid gap-3 sm:grid-cols-2">
-            <MoneyField v-model="form.basic" label="Basic salary" />
+            <MoneyField v-model="form.basic" label="Monthly basic salary" />
             <MoneyField v-model="form.overtime_pay" label="Overtime pay" />
             <label class="block">
               <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Overtime hours</span>
@@ -85,7 +85,8 @@
             <li>The staff member <strong>acknowledges</strong> (both signed) or <strong>disputes</strong> it.</li>
             <li>Disputes and comments are kept as a permanent log.</li>
           </ol>
-          <p class="mt-2 text-[11.5px]">Every payslip has its own link — open it to print a PDF.</p>
+          <p class="mt-2 text-[11.5px]">Monthly basic is <strong>prorated automatically</strong> for approved no-pay leave / sabbaticals in the period.</p>
+          <p class="mt-1 text-[11.5px]">Every payslip has its own link — open it to print a PDF.</p>
         </div>
 
         <div class="mt-4 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
@@ -174,7 +175,9 @@ async function create() {
         staff_id: form.staff_id,
         period_start: form.period_start, period_end: form.period_end,
         payment_date: form.payment_date || undefined,
-        basic_salary_cents: c(form.basic),
+        // Sent as the monthly rate — the server prorates it for approved no-pay
+        // leave / sabbatical in the period.
+        monthly_basic_cents: c(form.basic),
         allowances: form.allowances.filter((a: any) => a.label || a.amount).map((a: any) => ({ label: a.label, cents: c(a.amount) })),
         deductions: form.deductions.filter((d: any) => d.label || d.amount).map((d: any) => ({ label: d.label, cents: c(d.amount) })),
         overtime_hours: form.overtime_hours,
@@ -184,7 +187,10 @@ async function create() {
         notes: form.notes || undefined,
       },
     })
-    msg.value = `Draft created for ${r.data.employee_name}. Open it to issue.`
+    const pr = r.data?.proration
+    msg.value = pr && pr.no_pay_days > 0
+      ? `Draft created for ${r.data.employee_name}. Prorated for ${pr.no_pay_days} no-pay day(s) → basic ${money(pr.prorated_basic_cents)}. Open it to issue.`
+      : `Draft created for ${r.data.employee_name}. Open it to issue.`
     Object.assign(form, { basic: 0, overtime_hours: 0, overtime_pay: 0, cpf_employee: 0, cpf_employer: 0, allowances: [], deductions: [], notes: '' })
     await refresh()
   } catch (err: any) { msgErr.value = true; msg.value = err?.data?.message || err?.data?.statusMessage || 'Failed' } finally { creating.value = false }
