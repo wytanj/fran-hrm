@@ -206,16 +206,16 @@ const search = ref('')
 const fnFilter = ref('')
 const unownedOnly = ref(false)
 
-const { data: chartRes } = await useFetch<any>('/api/v1/org/chart')
+const { data: chartRes } = await useFetch<any>('/api/v1/org/chart', { lazy: true })
 const chart = computed<any>(() => chartRes.value?.data)
 
-const { data: accRes } = await useFetch<any>('/api/v1/accountabilities')
+const { data: accRes } = await useFetch<any>('/api/v1/accountabilities', { lazy: true })
 const accs = computed<any[]>(() => accRes.value?.data || [])
 
-const { data: posRes } = await useFetch<any>('/api/v1/org/positions')
+const { data: posRes } = await useFetch<any>('/api/v1/org/positions', { lazy: true })
 const functions = computed<any[]>(() => posRes.value?.functions || [])
 
-const { data: reportingRes } = await useFetch<any>('/api/v1/org/reporting')
+const { data: reportingRes } = await useFetch<any>('/api/v1/org/reporting', { lazy: true })
 const reporting = computed<any>(() => reportingRes.value?.data)
 
 const vacancyCount = computed(() => {

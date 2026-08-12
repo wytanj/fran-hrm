@@ -296,7 +296,7 @@ const busy = ref(false)
 
 const tab = ref(typeof route.query.tab === 'string' ? route.query.tab : 'hours')
 
-const { data: storesRes } = await useFetch<any>('/api/v1/stores')
+const { data: storesRes } = await useFetch<any>('/api/v1/stores', { lazy: true })
 const stores = computed<any[]>(() => (storesRes.value?.data || []).filter((s: any) => s.kind === 'store'))
 
 const query = computed(() => ({
@@ -304,20 +304,20 @@ const query = computed(() => ({
   include_dummy: includeDummy.value ? 'true' : undefined,
 }))
 
-const { data: hoursRes, pending: hoursPending } = await useFetch<any>('/api/v1/reports/hours', { query, watch: [from, to, storeId, includeDummy] })
+const { data: hoursRes, pending: hoursPending } = await useFetch<any>('/api/v1/reports/hours', { query, watch: [from, to, storeId, includeDummy], lazy: true })
 const summary = computed<any>(() => hoursRes.value?.data)
 
-const { data: flagsRes, refresh: refreshFlags, pending: flagsPending } = await useFetch<any>('/api/v1/flags', { query, watch: [from, to, storeId] })
+const { data: flagsRes, refresh: refreshFlags, pending: flagsPending } = await useFetch<any>('/api/v1/flags', { query, watch: [from, to, storeId], lazy: true })
 const flags = computed<any[]>(() => flagsRes.value?.data || [])
 
-const { data: corrRes, refresh: refreshCorr, pending: corrPending } = await useFetch<any>('/api/v1/corrections')
+const { data: corrRes, refresh: refreshCorr, pending: corrPending } = await useFetch<any>('/api/v1/corrections', { lazy: true })
 const corrections = computed<any[]>(() => corrRes.value?.data || [])
 
-const { data: payRes, refresh: refreshPay } = await useFetch<any>('/api/v1/pay-periods', { default: () => ({ data: [] }) })
+const { data: payRes, refresh: refreshPay } = await useFetch<any>('/api/v1/pay-periods', { default: () => ({ data: [] }), lazy: true })
 const payPeriods = computed<any[]>(() => payRes.value?.data || [])
 
 const { data: weeksRes, refresh: refreshWeeks, pending: weeksPending } = await useFetch<any>('/api/v1/timesheets/weeks', {
-  query, watch: [from, to, storeId], default: () => ({ data: [], overdue_count: 0 }),
+  query, watch: [from, to, storeId], default: () => ({ data: [], overdue_count: 0 }), lazy: true,
 })
 const weeks = computed<any[]>(() => weeksRes.value?.data || [])
 const overdueCount = computed<number>(() => weeksRes.value?.overdue_count || 0)

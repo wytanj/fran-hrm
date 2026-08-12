@@ -23,7 +23,7 @@
 
 <script setup lang="ts">
 const route = useRoute()
-const { data: res } = await useFetch<any>(`/api/v1/help/${route.params.slug}`)
+const { data: res } = await useFetch<any>(`/api/v1/help/${route.params.slug}`, { lazy: true })
 const article = computed<any>(() => res.value?.data)
 
 /**

@@ -69,12 +69,12 @@
 <script setup lang="ts">
 const query = ref('')
 
-const { data: listRes } = await useFetch<any>('/api/v1/help')
+const { data: listRes } = await useFetch<any>('/api/v1/help', { lazy: true })
 const articles = computed<any[]>(() => listRes.value?.data || [])
 
 const { data: searchRes, pending: searching } = await useFetch<any>('/api/v1/help', {
   query: computed(() => ({ q: query.value.trim().length > 1 ? query.value : undefined })),
-  watch: [query], server: false,
+  watch: [query], lazy: true,
 })
 const matches = computed<any[]>(() => searchRes.value?.data?.matches || [])
 

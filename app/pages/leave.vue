@@ -109,15 +109,15 @@
 <script setup lang="ts">
 const { isManager } = useSession()
 
-const { data: typesRes } = await useFetch<any>('/api/v1/leave/types')
+const { data: typesRes } = await useFetch<any>('/api/v1/leave/types', { lazy: true })
 const types = computed<any[]>(() => typesRes.value?.data || [])
 
-const { data: balancesRes, refresh: refreshBalances } = await useFetch<any>('/api/v1/leave/balances', { default: () => ({ data: [] }) })
+const { data: balancesRes, refresh: refreshBalances } = await useFetch<any>('/api/v1/leave/balances', { default: () => ({ data: [] }), lazy: true })
 const balances = computed<any[]>(() => balancesRes.value?.data || [])
 
 const tab = ref('pending')
 const { data: requestsRes, refresh: refreshRequests, pending: requestsPending } = await useFetch<any>('/api/v1/leave/requests', {
-  query: computed(() => ({ status: tab.value })), watch: [tab],
+  query: computed(() => ({ status: tab.value })), watch: [tab], lazy: true,
 })
 const requests = computed<any[]>(() => requestsRes.value?.data || [])
 

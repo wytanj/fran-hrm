@@ -190,7 +190,7 @@
 // Open to every signed-in staff member: "Mine" is how someone finds out which
 // permission to ask for. Editing is gated by the API (staff:write) and the UI
 // hides the controls accordingly.
-const { data: res, refresh } = await useFetch<any>('/api/v1/permissions')
+const { data: res, refresh } = await useFetch<any>('/api/v1/permissions', { lazy: true })
 
 const tabs = computed(() => {
   const base = [{ key: 'mine', label: 'Mine' }]
@@ -215,6 +215,7 @@ const { data: teamRes } = await useFetch<any>('/api/v1/staff', {
   query: { limit: 100, employment_status: 'active' },
   default: () => ({ data: [] }),
   immediate: computed(() => !!res.value?.data?.can_edit) as any,
+  lazy: true,
 })
 const team = computed<any[]>(() => teamRes.value?.data || [])
 

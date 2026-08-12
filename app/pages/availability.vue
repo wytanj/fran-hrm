@@ -115,12 +115,12 @@ const days = ref<DayRow[]>([])
 
 const { data: availRes, refresh, pending } = await useFetch<any>('/api/v1/availability', {
   query: computed(() => ({ from: weekStart.value, to: addDays(weekStart.value, 6) })),
-  watch: [weekStart],
+  watch: [weekStart], lazy: true,
 })
 
 const { data: shiftsRes } = await useFetch<any>('/api/v1/shifts', {
   query: computed(() => ({ from: weekStart.value, to: addDays(weekStart.value, 6) })),
-  watch: [weekStart], default: () => ({ data: [] }),
+  watch: [weekStart], default: () => ({ data: [] }), lazy: true,
 })
 const { staff } = useSession()
 const myShifts = computed<any[]>(() =>

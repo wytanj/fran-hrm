@@ -121,11 +121,11 @@ const firstName = computed(() => staff.value?.display_name.split(' ')[0])
 const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
 const weekStart = mondayOf(today)
 
-const { data: statusRes } = await useFetch<any>('/api/v1/clock/status')
+const { data: statusRes } = await useFetch<any>('/api/v1/clock/status', { lazy: true })
 const clockStatus = computed<any>(() => statusRes.value?.data)
 
 const { data: shiftsRes } = await useFetch<any>('/api/v1/shifts', {
-  query: { from: weekStart, to: addDays(weekStart, 6) },
+  query: { from: weekStart, to: addDays(weekStart, 6) }, lazy: true,
 })
 const myShifts = computed<any[]>(() =>
   (shiftsRes.value?.data || [])
@@ -144,17 +144,17 @@ const nextShiftHint = computed(() =>
 const clockLabel = computed(() =>
   clockStatus.value?.on_break ? 'Break' : clockStatus.value?.open_entry ? 'In' : 'Out')
 
-const { data: balancesRes } = await useFetch<any>('/api/v1/leave/balances', { default: () => ({ data: [] }) })
+const { data: balancesRes } = await useFetch<any>('/api/v1/leave/balances', { default: () => ({ data: [] }), lazy: true })
 const alRemaining = computed(() => {
   const al = (balancesRes.value?.data || []).find((b: any) => b.leave_type === 'AL')
   return al ? al.remaining_days : 0
 })
 
-const { data: pendingSwaps } = await useFetch<any>('/api/v1/swaps', { query: { status: 'pending' }, server: false, default: () => ({ data: [] }) })
-const { data: pendingLeave } = await useFetch<any>('/api/v1/leave/requests', { query: { status: 'pending' }, server: false, default: () => ({ data: [] }) })
-const { data: pendingCorr } = await useFetch<any>('/api/v1/corrections', { query: { status: 'pending' }, server: false, default: () => ({ data: [] }) })
+const { data: pendingSwaps } = await useFetch<any>('/api/v1/swaps', { query: { status: 'pending' }, lazy: true, default: () => ({ data: [] }) })
+const { data: pendingLeave } = await useFetch<any>('/api/v1/leave/requests', { query: { status: 'pending' }, lazy: true, default: () => ({ data: [] }) })
+const { data: pendingCorr } = await useFetch<any>('/api/v1/corrections', { query: { status: 'pending' }, lazy: true, default: () => ({ data: [] }) })
 const { data: flagsRes } = await useFetch<any>('/api/v1/flags', {
-  query: { status: 'open', from: addDays(today, -13), to: today }, server: false, default: () => ({ data: [] }),
+  query: { status: 'open', from: addDays(today, -13), to: today }, lazy: true, default: () => ({ data: [] }),
 })
 const openFlags = computed(() => (flagsRes.value?.data || []).length)
 

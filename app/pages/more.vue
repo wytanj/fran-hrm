@@ -61,7 +61,7 @@
 <script setup lang="ts">
 const { staff, logout } = useSession()
 
-const { data: access } = await useFetch<any>('/api/v1/mcp-connector/my-access', { server: false })
+const { data: access } = await useFetch<any>('/api/v1/mcp-connector/my-access', { lazy: true })
 
 const initials = computed(() =>
   staff.value?.display_name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase())

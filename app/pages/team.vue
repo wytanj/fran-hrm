@@ -157,12 +157,12 @@ const { data: res, pending, refresh } = await useFetch<any>('/api/v1/staff', {
     employment_type: typeFilter.value || undefined,
     employment_status: statusFilter.value || undefined,
   })),
-  watch: [search, typeFilter, statusFilter],
+  watch: [search, typeFilter, statusFilter], lazy: true,
 })
 const team = computed<any[]>(() => res.value?.data || [])
 
 // ── testing tools: dummy staff ──
-const { data: storesRes } = await useFetch<any>('/api/v1/stores')
+const { data: storesRes } = await useFetch<any>('/api/v1/stores', { lazy: true })
 const stores = computed<any[]>(() => (storesRes.value?.data || []).filter((s: any) => s.kind === 'store'))
 const dummies = computed<any[]>(() => team.value.filter((m) => m.is_dummy))
 

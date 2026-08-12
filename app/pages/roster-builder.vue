@@ -406,14 +406,14 @@ const storeId = ref(staff.value?.home_store_id || '')
 const error = ref('')
 const message = ref('')
 
-const { data: storesRes } = await useFetch<any>('/api/v1/stores')
+const { data: storesRes } = await useFetch<any>('/api/v1/stores', { lazy: true })
 const stores = computed<any[]>(() => (storesRes.value?.data || []).filter((s: any) => s.kind === 'store'))
-if (!storeId.value && stores.value.length) storeId.value = stores.value[0].id
+watch(stores, (list) => { if (!storeId.value && list.length) storeId.value = list[0].id }, { immediate: true })
 
-const { data: templatesRes } = await useFetch<any>('/api/v1/templates')
+const { data: templatesRes } = await useFetch<any>('/api/v1/templates', { lazy: true })
 const templates = computed<any[]>(() => templatesRes.value?.data || [])
 
-const { data: setsRes, refresh: refreshSets } = await useFetch<any>('/api/v1/constraint-sets')
+const { data: setsRes, refresh: refreshSets } = await useFetch<any>('/api/v1/constraint-sets', { lazy: true })
 const constraintSets = computed<any[]>(() => setsRes.value?.data || [])
 
 // ── generate state ──
@@ -527,7 +527,7 @@ const useMappingName = ref('')
 const saveMappingAs = ref('')
 const columnField = reactive<Record<string, string>>({})
 
-const { data: mappingsRes, refresh: refreshMappings } = await useFetch<any>('/api/v1/roster-intake/mappings')
+const { data: mappingsRes, refresh: refreshMappings } = await useFetch<any>('/api/v1/roster-intake/mappings', { lazy: true })
 const savedMappings = computed<any[]>(() => mappingsRes.value?.data || [])
 const fields = computed<any[]>(() => mappingsRes.value?.fields || [])
 const fieldGroups = computed(() => [...new Set(fields.value.map((f) => f.group))])
@@ -619,7 +619,7 @@ const exporting = ref(false)
 
 const { data: rosterRes } = await useFetch<any>('/api/v1/rosters', {
   query: computed(() => ({ store_id: storeId.value, week_start: weekStart.value })),
-  watch: [storeId, weekStart],
+  watch: [storeId, weekStart], lazy: true,
 })
 const currentRoster = computed<any>(() => rosterRes.value?.data)
 

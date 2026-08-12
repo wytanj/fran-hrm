@@ -178,16 +178,16 @@ const route = useRoute()
 
 const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
 
-const { data: statusRes, refresh: refreshStatus, pending: statusPending } = await useFetch<any>('/api/v1/clock/status')
+const { data: statusRes, refresh: refreshStatus, pending: statusPending } = await useFetch<any>('/api/v1/clock/status', { lazy: true })
 const status = computed<any>(() => statusRes.value?.data)
 
 const { data: historyRes, refresh: refreshHistory } = await useFetch<any>('/api/v1/time-entries', {
-  query: { from: addDays(today, -13), to: today, limit: 30 }, default: () => ({ data: [] }),
+  query: { from: addDays(today, -13), to: today, limit: 30 }, default: () => ({ data: [] }), lazy: true,
 })
 const history = computed<any[]>(() =>
   (historyRes.value?.data || []).filter((e: any) => e.work_date !== today))
 
-const { data: corrRes, refresh: refreshCorr } = await useFetch<any>('/api/v1/corrections', { default: () => ({ data: [] }) })
+const { data: corrRes, refresh: refreshCorr } = await useFetch<any>('/api/v1/corrections', { default: () => ({ data: [] }), lazy: true })
 const myCorrections = computed<any[]>(() => (corrRes.value?.data || []).slice(0, 5))
 
 const qrToken = ref(typeof route.query.token === 'string' ? route.query.token : '')

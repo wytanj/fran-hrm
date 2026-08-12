@@ -261,19 +261,19 @@ const showAdd = ref(false)
 // latency (this is what made /roster feel slow with no data).
 const [{ data: storesRes }, { data: rosterRes, refresh, pending }, { data: templatesRes }, { data: membersRes }] =
   await Promise.all([
-    useFetch<any>('/api/v1/stores'),
+    useFetch<any>('/api/v1/stores', { lazy: true }),
     useFetch<any>('/api/v1/rosters', {
       query: computed(() => ({ store_id: storeId.value, week_start: weekStart.value })),
-      watch: [storeId, weekStart],
+      watch: [storeId, weekStart], lazy: true,
     }),
-    useFetch<any>('/api/v1/templates'),
+    useFetch<any>('/api/v1/templates', { lazy: true }),
     useFetch<any>('/api/v1/staff', {
-      query: { limit: 100, employment_status: 'active' }, default: () => ({ data: [] }),
+      query: { limit: 100, employment_status: 'active' }, default: () => ({ data: [] }), lazy: true,
     }),
   ])
 
 const stores = computed<any[]>(() => (storesRes.value?.data || []).filter((s: any) => s.kind === 'store'))
-if (!storeId.value && stores.value.length) storeId.value = stores.value[0].id
+watch(stores, (list) => { if (!storeId.value && list.length) storeId.value = list[0].id }, { immediate: true })
 
 const roster = computed<any>(() => rosterRes.value?.data)
 const shifts = computed<any[]>(() => roster.value?.shifts || [])

@@ -78,10 +78,10 @@ definePageMeta({ middleware: ['supervisor-only'] })
 
 const { staff } = useSession()
 
-const { data: storesRes } = await useFetch<any>('/api/v1/stores')
+const { data: storesRes } = await useFetch<any>('/api/v1/stores', { lazy: true })
 const stores = computed<any[]>(() => (storesRes.value?.data || []).filter((s: any) => s.kind === 'store'))
 const storeId = ref(staff.value?.home_store_id || '')
-if (!storeId.value && stores.value.length) storeId.value = stores.value[0].id
+watch(stores, (list) => { if (!storeId.value && list.length) storeId.value = list[0].id }, { immediate: true })
 
 const actions = [
   { key: 'clock_in', label: 'Clock in' },

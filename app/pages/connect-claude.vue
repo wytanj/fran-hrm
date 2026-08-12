@@ -151,10 +151,10 @@ definePageMeta({ middleware: ['supervisor-only'] })
 const { isAreaManager, staff } = useSession()
 const isHqAdmin = computed(() => staff.value?.role === 'hq_admin')
 
-const { data: res, refresh } = await useFetch<any>('/api/v1/mcp-connector')
+const { data: res, refresh } = await useFetch<any>('/api/v1/mcp-connector', { lazy: true })
 const data = computed<any>(() => res.value?.data)
 
-const { data: teamRes } = await useFetch<any>('/api/v1/staff', { query: { limit: 100, employment_status: 'active' } })
+const { data: teamRes } = await useFetch<any>('/api/v1/staff', { query: { limit: 100, employment_status: 'active' }, lazy: true })
 const team = computed<any[]>(() => teamRes.value?.data || [])
 
 const busy = ref(false)

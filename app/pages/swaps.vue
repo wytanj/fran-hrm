@@ -103,7 +103,7 @@ const filters = [
 const statusFilter = ref('pending')
 
 const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
-const { data: shiftsRes } = await useFetch<any>('/api/v1/shifts', { query: { from: today, to: addDays(today, 28) } })
+const { data: shiftsRes } = await useFetch<any>('/api/v1/shifts', { query: { from: today, to: addDays(today, 28) }, lazy: true })
 
 // Only shifts still outside the 24h cutoff can be offered — showing the rest
 // would let someone submit a request the API is going to refuse.
@@ -112,13 +112,13 @@ const myShifts = computed<any[]>(() =>
     s.staff_id === staff.value?.id && new Date(s.start_at).getTime() - Date.now() > 24 * 3600_000))
 
 const { data: staffRes } = await useFetch<any>('/api/v1/staff', {
-  query: { limit: 100, employment_status: 'active' }, server: false, default: () => ({ data: [] }),
+  query: { limit: 100, employment_status: 'active' }, lazy: true, default: () => ({ data: [] }),
 })
 const teammates = computed<any[]>(() =>
   (staffRes.value?.data || []).filter((m: any) => m.id !== staff.value?.id))
 
 const { data: swapsRes, refresh, pending } = await useFetch<any>('/api/v1/swaps', {
-  query: computed(() => ({ status: statusFilter.value || undefined })), watch: [statusFilter],
+  query: computed(() => ({ status: statusFilter.value || undefined })), watch: [statusFilter], lazy: true,
 })
 const swaps = computed<any[]>(() => swapsRes.value?.data || [])
 
