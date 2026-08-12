@@ -51,6 +51,7 @@ export function useSession() {
   const isManager = computed(() => (ROLE_LEVEL[staff.value?.role || ''] || 0) >= ROLE_LEVEL.store_manager)
   const isSupervisor = computed(() => (ROLE_LEVEL[staff.value?.role || ''] || 0) >= ROLE_LEVEL.supervisor)
   const isAreaManager = computed(() => (ROLE_LEVEL[staff.value?.role || ''] || 0) >= ROLE_LEVEL.area_manager)
+  const isHqAdmin = computed(() => staff.value?.role === 'hq_admin')
 
-  return { staff, ready, refresh, login, logout, isManager, isSupervisor, isAreaManager }
+  return { staff, ready, refresh, login, logout, isManager, isSupervisor, isAreaManager, isHqAdmin }
 }

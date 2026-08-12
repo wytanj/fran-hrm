@@ -29,6 +29,8 @@ export const SCOPES = [
   { scope: 'reports:cost', group: 'Reporting', label: 'See pay rates and manpower cost', detail: 'Hourly rates and cost-per-store figures. Treat as confidential.' },
 
   { scope: 'payroll:lock', group: 'Payroll', label: 'Approve, lock and reopen pay periods', detail: 'Locking makes timesheets read-only; reopening a paid period needs care.' },
+  { scope: 'payroll:settings', group: 'Payroll', label: 'Manage CPF & pay settings', detail: 'CPF/EOR configuration and pay settings (Singapore). Finance and HQ only — every change is logged to the control plane.' },
+  { scope: 'payroll:process', group: 'Payroll', label: 'Process payroll & EOR runs', detail: 'Run payroll and submit to the Employer of Record. Financial processing — Finance and HQ only.' },
 
   { scope: 'connector:manage', group: 'Admin', label: 'Manage the Claude connector', detail: 'Generate OAuth credentials, invite staff, disconnect people.' },
 
@@ -61,16 +63,18 @@ export const DEFAULT_ROLE_MATRIX = {
   supervisor: ['staff:read', 'org:read', 'roster:read', 'roster:write', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'reports:read'],
   store_manager: ['staff:read', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read'],
   area_manager: ['staff:read', 'staff:write', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read', 'reports:cost', 'payroll:lock'],
-  // Finance: sees everything relevant to pay and can lock payroll, but edits no
-  // rosters/staff and approves no leave. Read-heavy specialist admin.
-  finance: ['staff:read', 'org:read', 'roster:read', 'roster:history', 'attendance:read', 'leave:read', 'reports:read', 'reports:cost', 'payroll:lock'],
+  // Finance: sees everything relevant to pay, locks payroll, and owns the
+  // financial processing (CPF/pay settings + EOR runs). Edits no rosters/staff
+  // and approves no leave.
+  finance: ['staff:read', 'org:read', 'roster:read', 'roster:history', 'attendance:read', 'leave:read', 'reports:read', 'reports:cost', 'payroll:lock', 'payroll:settings', 'payroll:process'],
   hq_admin: [...SCOPE_KEYS.filter((s) => s !== 'pos:sync')],
 }
 
 /** Scopes that meaningfully change data or expose sensitive figures. */
 export const SENSITIVE_SCOPES = [
   'staff:write', 'org:write', 'roster:publish', 'attendance:write',
-  'leave:approve', 'reports:cost', 'payroll:lock', 'connector:manage',
+  'leave:approve', 'reports:cost', 'payroll:lock', 'payroll:settings',
+  'payroll:process', 'connector:manage',
 ]
 
 export function scopeMeta(scope) {

@@ -146,10 +146,9 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({ middleware: ['supervisor-only'] })
+definePageMeta({ middleware: ['hq-admin-only'] })
 
-const { isAreaManager, staff } = useSession()
-const isHqAdmin = computed(() => staff.value?.role === 'hq_admin')
+const { isAreaManager, staff, isHqAdmin } = useSession()
 
 const { data: res, refresh } = await useFetch<any>('/api/v1/mcp-connector', { lazy: true })
 const data = computed<any>(() => res.value?.data)
@@ -211,7 +210,7 @@ function writeLabel(scopes: string[]) {
 function roleLabel(role?: string) {
   return ({
     staff: 'Staff', supervisor: 'Supervisor', store_manager: 'Store Manager',
-    area_manager: 'Area Manager', hq_admin: 'HQ Admin',
+    area_manager: 'Area Manager', finance: 'Finance', hq_admin: 'HQ Admin',
   } as Record<string, string>)[role || ''] || role || '—'
 }
 function fmtDate(iso?: string) {

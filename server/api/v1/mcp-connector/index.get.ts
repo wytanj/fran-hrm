@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
   // What each role would get through Claude, read from the live permission
   // matrix — so this page reflects a permissions edit immediately.
   const roleMatrix = await Promise.all(
-    ['staff', 'supervisor', 'store_manager', 'area_manager', 'hq_admin'].map(async (role) => {
+    ['staff', 'supervisor', 'store_manager', 'area_manager', 'finance', 'hq_admin'].map(async (role) => {
       const scopes = await mcpScopesForRole(db, ctx.workspaceId, role)
       return { role, tool_count: resolvePermittedTools(scopes).length, scopes }
     }),

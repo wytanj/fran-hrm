@@ -26,6 +26,7 @@ import {
 } from '../../core/org/query.mjs'
 import { recordAudit } from '../../core/audit/record.mjs'
 import { rosterHistory } from '../../core/audit/history.mjs'
+import { getPayrollSettings, updatePayrollSettings, payrollSettingsHistory } from '../../core/payroll/settings.mjs'
 
 const DATE = { type: 'string', description: 'YYYY-MM-DD' }
 const STAFF_REF = { type: 'string', description: 'Staff reference: uuid, employee code (e.g. PT001), or a unique name fragment' }
@@ -420,6 +421,29 @@ export const toolDefinitions = [
       },
       required: ['name', 'constraints'],
     },
+  },
+  {
+    name: 'payroll_settings_get',
+    description: 'Read the workspace CPF/EOR pay settings (Singapore). Finance/HQ only. Returns the current config plus who last changed it and when.',
+    inputSchema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'payroll_settings_update',
+    description: 'PRIVILEGED WRITE: update CPF/EOR pay settings. Pass a partial `settings` object to merge (or replace:true to overwrite). Every change is logged to the control plane with before/after and who made it. Finance/HQ only.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        settings: { type: 'object', description: 'Partial settings to merge, e.g. { "cpf": { "ordinary_wage_ceiling_cents": 700000 } }' },
+        replace: { type: 'boolean', default: false },
+        reason: { type: 'string', description: 'Why — recorded in the control-plane log' },
+      },
+      required: ['settings'],
+    },
+  },
+  {
+    name: 'payroll_settings_history',
+    description: 'The payroll-settings change log (control plane): who changed the CPF/EOR settings, when, from where (web/API/Claude), and what keys changed. Finance/HQ only.',
+    inputSchema: { type: 'object', properties: {}, required: [] },
   },
   {
     name: 'shift_assign',
@@ -1080,6 +1104,33 @@ export async function handleTool(name, args = {}) {
             warnings: validated.warnings,
             explained: explainConstraints(validated.constraints),
           })
+      }
+
+      case 'payroll_settings_get': {
+        requireScope('payroll:settings')
+        return jsonResult(await getPayrollSettings(db(), ws()))
+      }
+
+      case 'payroll_settings_update': {
+        requireScope('payroll:settings')
+        if (!a.settings || typeof a.settings !== 'object') throw new Error('Provide a settings object to merge.')
+        const { before, after } = await updatePayrollSettings(db(), ws(), a.settings, {
+          actorStaffId: getMcpActorStaffId(), replace: !!a.replace,
+        })
+        const keys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})])
+        const changed = [...keys].filter((k) => JSON.stringify(before[k]) !== JSON.stringify(after[k]))
+        return withAudit(name, requestId,
+          {
+            object_type: 'payroll_settings', entity_id: ws(), operation: 'UPDATE',
+            before_data: before, after_data: after,
+            metadata: { action: 'update_payroll_settings', changed_keys: changed, reason: a.reason || null },
+          },
+          { settings: after, changed, note: `Updated payroll settings (${changed.join(', ') || 'no change'}). Logged to the control plane.` })
+      }
+
+      case 'payroll_settings_history': {
+        requireScope('payroll:settings')
+        return jsonResult({ events: await payrollSettingsHistory(db(), ws()) })
       }
 
       case 'shift_assign': {
