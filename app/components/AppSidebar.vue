@@ -68,7 +68,7 @@ defineProps<{ open: boolean }>()
 defineEmits(['close'])
 
 const route = useRoute()
-const { staff, isSupervisor, isManager, isAreaManager, isHqAdmin } = useSession()
+const { staff, isSupervisor, isManager, isAreaManager, isHqAdmin, isFinanceOrHq } = useSession()
 const { isNavigatingTo } = useNavigating()
 
 // Pending-approval counts drive the sidebar badges — the point of a desk tool
@@ -87,6 +87,7 @@ const groups = computed(() => [
     items: [
       { to: '/', label: 'Dashboard', icon: '◫' },
       { to: '/clock', label: 'Clock', icon: '◷' },
+      { to: '/payslips', label: 'My payslips', icon: '$' },
     ],
   },
   {
@@ -113,6 +114,7 @@ const groups = computed(() => [
           { to: '/clock-scan', label: 'Check-in scanner', icon: '⧉' },
           { to: '/reports', label: 'Timesheets', icon: '▤', count: pendingCorrections.value },
           { to: '/reports?tab=hours', label: 'Reports', icon: '◲' },
+          ...(isFinanceOrHq.value ? [{ to: '/payroll', label: 'Payroll', icon: '◎' }] : []),
           { to: '/permissions', label: 'Permissions', icon: '⚿' },
           ...(isHqAdmin.value ? [{ to: '/connect-claude', label: 'Connect Claude', icon: '✦' }] : []),
         ],

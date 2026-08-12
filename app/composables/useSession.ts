@@ -52,6 +52,9 @@ export function useSession() {
   const isSupervisor = computed(() => (ROLE_LEVEL[staff.value?.role || ''] || 0) >= ROLE_LEVEL.supervisor)
   const isAreaManager = computed(() => (ROLE_LEVEL[staff.value?.role || ''] || 0) >= ROLE_LEVEL.area_manager)
   const isHqAdmin = computed(() => staff.value?.role === 'hq_admin')
+  // Payroll is finance/HQ only — a specialist gate, not a seniority level (an
+  // area_manager is senior but does not do financial processing).
+  const isFinanceOrHq = computed(() => ['finance', 'hq_admin'].includes(staff.value?.role || ''))
 
-  return { staff, ready, refresh, login, logout, isManager, isSupervisor, isAreaManager, isHqAdmin }
+  return { staff, ready, refresh, login, logout, isManager, isSupervisor, isAreaManager, isHqAdmin, isFinanceOrHq }
 }
