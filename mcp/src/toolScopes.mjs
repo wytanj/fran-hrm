@@ -12,6 +12,7 @@ export const TOOL_SCOPE_CATALOG = {
   help_list: { scope: null, action: 'List all help articles' },
 
   stores_list: { scope: 'staff:read', action: 'List Fran stores/locations' },
+  zones_list: { scope: 'zones:read', action: 'The mapped zones of a store floor (name, colour, position) — for scheduling & analytics' },
   staff_search: { scope: 'staff:read', action: 'Search the staff directory (name, code, role, store, FT/PT)' },
   staff_get: { scope: 'staff:read', action: 'One staff member by id, employee code, or unique name' },
 

@@ -32,6 +32,9 @@ export const SCOPES = [
   { scope: 'payroll:settings', group: 'Payroll', label: 'Manage CPF & pay settings', detail: 'CPF/EOR configuration and pay settings (Singapore). Finance and HQ only — every change is logged to the control plane.' },
   { scope: 'payroll:process', group: 'Payroll', label: 'Process payroll & EOR runs', detail: 'Run payroll and submit to the Employer of Record. Financial processing — Finance and HQ only.' },
 
+  { scope: 'zones:read', group: 'Stores', label: 'View store zones and layouts', detail: 'The mapped zones of a store floor — for scheduling, analytics and (later) vision models.' },
+  { scope: 'zones:write', group: 'Stores', label: 'Create and edit store zones', detail: 'Draw and name the zones of a store layout. Store managers and above.' },
+
   { scope: 'connector:manage', group: 'Admin', label: 'Manage the Claude connector', detail: 'Generate OAuth credentials, invite staff, disconnect people.' },
 
   { scope: 'pos:sync', group: 'Integrations', label: 'Pull the staff directory for POS', detail: 'Machine-to-machine only; not meaningful for a person.' },
@@ -60,13 +63,13 @@ export const DEFAULT_ROLE_MATRIX = {
   // No *:write for staff — self-service runs on the matching :read plus the
   // identity check. See core/db/010_permissions_split_self_service.sql.
   staff: ['staff:read', 'org:read', 'roster:read', 'attendance:read', 'leave:read', 'leave:write', 'reports:read'],
-  supervisor: ['staff:read', 'org:read', 'roster:read', 'roster:write', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'reports:read'],
-  store_manager: ['staff:read', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read'],
-  area_manager: ['staff:read', 'staff:write', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read', 'reports:cost', 'payroll:lock'],
+  supervisor: ['staff:read', 'org:read', 'roster:read', 'roster:write', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'reports:read', 'zones:read'],
+  store_manager: ['staff:read', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read', 'zones:read', 'zones:write'],
+  area_manager: ['staff:read', 'staff:write', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read', 'reports:cost', 'payroll:lock', 'zones:read', 'zones:write'],
   // Finance: sees everything relevant to pay, locks payroll, and owns the
   // financial processing (CPF/pay settings + EOR runs). Edits no rosters/staff
   // and approves no leave.
-  finance: ['staff:read', 'org:read', 'roster:read', 'roster:history', 'attendance:read', 'leave:read', 'reports:read', 'reports:cost', 'payroll:lock', 'payroll:settings', 'payroll:process'],
+  finance: ['staff:read', 'org:read', 'roster:read', 'roster:history', 'attendance:read', 'leave:read', 'reports:read', 'reports:cost', 'payroll:lock', 'payroll:settings', 'payroll:process', 'zones:read'],
   hq_admin: [...SCOPE_KEYS.filter((s) => s !== 'pos:sync')],
 }
 

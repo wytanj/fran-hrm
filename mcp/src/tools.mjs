@@ -27,6 +27,7 @@ import {
 import { recordAudit } from '../../core/audit/record.mjs'
 import { rosterHistory } from '../../core/audit/history.mjs'
 import { getPayrollSettings, updatePayrollSettings, payrollSettingsHistory } from '../../core/payroll/settings.mjs'
+import { listZones } from '../../core/zones/query.mjs'
 
 const DATE = { type: 'string', description: 'YYYY-MM-DD' }
 const STAFF_REF = { type: 'string', description: 'Staff reference: uuid, employee code (e.g. PT001), or a unique name fragment' }
@@ -70,6 +71,11 @@ export const toolDefinitions = [
     name: 'stores_list',
     description: 'List Fran stores/locations (code, name, kind store|hq, timezone).',
     inputSchema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'zones_list',
+    description: 'The mapped zones of a store floor — name, code, colour and position (as percentage rectangles). Use for scheduling by zone and retail analytics.',
+    inputSchema: { type: 'object', properties: { store: STORE_REF }, required: ['store'] },
   },
   {
     name: 'org_chart',
@@ -555,6 +561,12 @@ export async function handleTool(name, args = {}) {
       case 'stores_list': {
         requireScope('staff:read')
         return jsonResult({ stores: await listStores(db(), ws()) })
+      }
+
+      case 'zones_list': {
+        requireScope('zones:read')
+        const store = await resolveStore(db(), ws(), a.store)
+        return jsonResult({ store: { code: store.code, name: store.name }, zones: await listZones(db(), ws(), store.id) })
       }
 
       case 'org_chart': {
