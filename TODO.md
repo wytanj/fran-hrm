@@ -23,6 +23,11 @@ _(Two workspaces planned: heyfran.com = real; wytanj@gmail.com = throwaway sandb
 
 **Note:** migrations `012`–`017` are taken. Finance UI currently rides `ROLE_LEVEL` (manager-level visibility); moving the manager UI gates from role-level to scope-based is a follow-up so finance sees exactly its permitted screens.
 
+## 🧭 Store / property ownership (decided 2026-08-12)
+- **fran-skums owns the simple store master**; fran-hrm **retrieves stores from skums** for zone management (transition off HRM's own `stores` table).
+- **Property/facilities** (renovation, tax, insurance, lease, floor-plan asset) → a future **PMS** system, its own repo + own Supabase. Brief: [handoff_PMS_PLAN.md](handoff_PMS_PLAN.md).
+- Layout images are a stopgap as data URLs in HRM; the floor-plan *asset* belongs in PMS (Supabase Storage), with HRM overlaying zones.
+
 ## ✅ Recently done (all deployed to fran-hrm-lime)
 - **Staff status indicators** — (1) simulated staff now **excluded from hours/cost reports + exports by default**, with an "Include simulated" toggle (`?include_dummy=true` on REST hours/attendance; `include_dummy` on MCP `attendance_summary`); (2) **access-method tag** for real staff — `staff.access_method` (mig `015`: `sso`/`otp`/`pin`, default `pin`), shown as an SSO/OTP/PIN pill on Team. Data-model indication only; OTP (Twilio) + SSO sign-in flows land with the SSO epic. "Dummy" box relabelled **Simulated staff**.
 - **Dummy (test) staff** — `staff.is_dummy` (mig `014`); create via Team → Testing tools (auto `DUMMY-xxxx` code, PIN 123456) or `POST /staff {is_dummy:true}`; **"Dummy" tag** beside the name on Team, Roster (matrix+mobile) and Reports; dummy-only hard purge (`DELETE /staff/:id`) + **Remove all** (`POST /staff/purge-dummies`) — real staff can't be hard-deleted.
