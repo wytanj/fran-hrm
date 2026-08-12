@@ -87,6 +87,17 @@
           </ol>
           <p class="mt-2 text-[11.5px]">Every payslip has its own link — open it to print a PDF.</p>
         </div>
+
+        <div class="mt-4 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
+          <h3 class="font-display text-[14px] font-bold text-ink">CPF EZPay template</h3>
+          <p class="mt-1 text-[12px] text-muted">Generate the CPF Board upload file for a month, from that month's issued payslips + staff CPF details.</p>
+          <div class="mt-2 flex items-center gap-2">
+            <input v-model="ezpayMonth" type="month" class="h-9 rounded-md border border-line bg-white px-2.5 text-[13px]">
+            <a class="press inline-flex h-9 items-center rounded-md bg-yellow px-3 text-[12.5px] font-semibold text-brown shadow-glow"
+              :class="!ezpayMonth ? 'pointer-events-none opacity-40' : ''" :href="`/api/v1/payroll/cpf-ezpay?month=${ezpayMonth}`" download>Download CSV</a>
+          </div>
+          <p class="mt-1.5 text-[11px] text-muted">Foreigners (CPF-not-applicable) and anyone missing an NRIC are skipped.</p>
+        </div>
       </div>
     </div>
 
@@ -149,6 +160,7 @@ const sum = (arr: any[]) => (arr || []).reduce((s, x) => s + c(x.amount), 0)
 const grossCents = computed(() => c(form.basic) + sum(form.allowances) + c(form.overtime_pay))
 const netCents = computed(() => grossCents.value - sum(form.deductions) - c(form.cpf_employee))
 
+const ezpayMonth = ref('')
 const creating = ref(false)
 const msg = ref('')
 const msgErr = ref(false)

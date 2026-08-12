@@ -37,6 +37,11 @@ export default defineEventHandler(async (event) => {
     date_of_birth: body.date_of_birth || null,
     postal_code: body.postal_code ? String(body.postal_code).trim() : null,
     unit_number: body.unit_number ? String(body.unit_number).trim() : null,
+    // CPF / residency (for the CPF EZPay template).
+    race: body.race || null,
+    residency: ['citizen', 'pr', 'foreigner'].includes(body.residency) ? body.residency : null,
+    cpf_applicable: body.cpf_applicable === undefined ? true : !!body.cpf_applicable,
+    pr_start_date: body.pr_start_date || null,
   }
   // A dummy you can immediately sign in as, for E2E — default PIN unless given.
   if (isDummy && !body.pin) insert.pin_hash = bcrypt.hashSync('123456', 10)

@@ -11,3 +11,7 @@ dist
 .vercel
 
 .vercel
+
+# Real payroll data / generated CPF files — never commit
+docs/*.xlsx
+docs/cpf_ezpay_*.csv
