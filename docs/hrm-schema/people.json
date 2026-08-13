@@ -1,0 +1,959 @@
+{
+  "id": "fran-hrm.people",
+  "format": 1,
+  "jurisdiction": "SG",
+  "currency": "SGD",
+  "calendar": {
+    "timezone": "Asia/Singapore",
+    "date_format": "YYYY-MM-DD",
+    "week_starts": "monday"
+  },
+  "money": {
+    "unit": "integer_cents",
+    "display_currency": "SGD"
+  },
+  "titles": {
+    "formal": "positions.title",
+    "comms": "staff.comms_title || positions.comms_title",
+    "display": "comms || formal"
+  },
+  "hierarchy": {
+    "seat_line": "positions.reports_to_id",
+    "person_override": "staff.reports_to_id",
+    "resolve_order": [
+      "staff.reports_to_id",
+      "holder_of(seat.reports_to_id)"
+    ],
+    "vacant_or_shared": "report_gap_do_not_guess"
+  },
+  "accountability": {
+    "owner_required": true,
+    "owner_on": "seat_first_person_pin",
+    "contributors_separate": true
+  },
+  "staff": {
+    "employment_types": [
+      {
+        "value": "full_time",
+        "label": "Full-time"
+      },
+      {
+        "value": "part_time",
+        "label": "Part-time"
+      },
+      {
+        "value": "contractor",
+        "label": "Contractor"
+      }
+    ],
+    "employment_statuses": [
+      {
+        "value": "active",
+        "label": "Active"
+      },
+      {
+        "value": "inactive",
+        "label": "Inactive"
+      },
+      {
+        "value": "terminated",
+        "label": "Terminated"
+      }
+    ],
+    "roles": [
+      {
+        "value": "staff",
+        "label": "Staff"
+      },
+      {
+        "value": "supervisor",
+        "label": "Supervisor"
+      },
+      {
+        "value": "store_manager",
+        "label": "Store Manager"
+      },
+      {
+        "value": "area_manager",
+        "label": "Area Manager"
+      },
+      {
+        "value": "finance",
+        "label": "Finance"
+      },
+      {
+        "value": "hq_admin",
+        "label": "HQ Admin"
+      }
+    ],
+    "access_methods": [
+      {
+        "value": "pin",
+        "label": "PIN"
+      },
+      {
+        "value": "sso",
+        "label": "Google SSO"
+      },
+      {
+        "value": "otp",
+        "label": "OTP"
+      }
+    ],
+    "gender": [
+      {
+        "value": "female",
+        "label": "Female"
+      },
+      {
+        "value": "male",
+        "label": "Male"
+      },
+      {
+        "value": "non_binary",
+        "label": "Non-binary"
+      },
+      {
+        "value": "prefer_not_to_say",
+        "label": "Prefer not to say"
+      },
+      {
+        "value": "other",
+        "label": "Other"
+      }
+    ],
+    "citizenship": [
+      {
+        "value": "citizen",
+        "label": "Singaporean"
+      },
+      {
+        "value": "pr",
+        "label": "PR"
+      },
+      {
+        "value": "foreigner",
+        "label": "Foreigner"
+      }
+    ],
+    "race": [
+      {
+        "value": "chinese",
+        "label": "Chinese"
+      },
+      {
+        "value": "malay",
+        "label": "Malay"
+      },
+      {
+        "value": "indian",
+        "label": "Indian"
+      },
+      {
+        "value": "eurasian",
+        "label": "Eurasian"
+      },
+      {
+        "value": "other",
+        "label": "Other"
+      }
+    ],
+    "field_groups": [
+      {
+        "key": "identity",
+        "label": "Identity"
+      },
+      {
+        "key": "employment",
+        "label": "Employment"
+      },
+      {
+        "key": "org",
+        "label": "Org & hierarchy"
+      },
+      {
+        "key": "contact",
+        "label": "Contact"
+      },
+      {
+        "key": "address",
+        "label": "Home address"
+      },
+      {
+        "key": "statutory",
+        "label": "Statutory (Singapore)"
+      },
+      {
+        "key": "compensation",
+        "label": "Pay"
+      }
+    ],
+    "sensitivities": [
+      "directory",
+      "pii",
+      "compensation"
+    ],
+    "fields": [
+      {
+        "key": "display_name",
+        "column": "display_name",
+        "label": "Name",
+        "type": "text",
+        "group": "identity",
+        "sensitivity": "directory",
+        "required": true,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "employee_code",
+        "column": "employee_code",
+        "label": "Employee code",
+        "type": "text",
+        "group": "identity",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": false,
+        "create_only": true,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "gender",
+        "column": "gender",
+        "label": "Gender",
+        "type": "enum",
+        "group": "identity",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [
+          {
+            "value": "female",
+            "label": "Female"
+          },
+          {
+            "value": "male",
+            "label": "Male"
+          },
+          {
+            "value": "non_binary",
+            "label": "Non-binary"
+          },
+          {
+            "value": "prefer_not_to_say",
+            "label": "Prefer not to say"
+          },
+          {
+            "value": "other",
+            "label": "Other"
+          }
+        ],
+        "description": null
+      },
+      {
+        "key": "date_of_birth",
+        "column": "date_of_birth",
+        "label": "Date of birth",
+        "type": "date",
+        "group": "identity",
+        "sensitivity": "pii",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "nric",
+        "column": "nric",
+        "label": "NRIC / FIN",
+        "type": "text",
+        "group": "statutory",
+        "sensitivity": "pii",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": "Singapore NRIC or FIN. Sensitive."
+      },
+      {
+        "key": "race",
+        "column": "race",
+        "label": "Race",
+        "type": "enum",
+        "group": "statutory",
+        "sensitivity": "pii",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [
+          {
+            "value": "chinese",
+            "label": "Chinese"
+          },
+          {
+            "value": "malay",
+            "label": "Malay"
+          },
+          {
+            "value": "indian",
+            "label": "Indian"
+          },
+          {
+            "value": "eurasian",
+            "label": "Eurasian"
+          },
+          {
+            "value": "other",
+            "label": "Other"
+          }
+        ],
+        "description": "Drives the Self-Help Group fund on the CPF EZPay file."
+      },
+      {
+        "key": "residency",
+        "column": "residency",
+        "label": "Citizenship",
+        "type": "enum",
+        "group": "statutory",
+        "sensitivity": "pii",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [
+          {
+            "value": "citizen",
+            "label": "Singaporean"
+          },
+          {
+            "value": "pr",
+            "label": "PR"
+          },
+          {
+            "value": "foreigner",
+            "label": "Foreigner"
+          }
+        ],
+        "description": "Singaporean, PR or foreigner."
+      },
+      {
+        "key": "nationality",
+        "column": "nationality",
+        "label": "Nationality",
+        "type": "text",
+        "group": "statutory",
+        "sensitivity": "pii",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "pr_start_date",
+        "column": "pr_start_date",
+        "label": "PR start date",
+        "type": "date",
+        "group": "statutory",
+        "sensitivity": "pii",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": "Required for PR so CPF can pick year 1 / year 2 / year 3."
+      },
+      {
+        "key": "cpf_applicable",
+        "column": "cpf_applicable",
+        "label": "CPF applicable",
+        "type": "boolean",
+        "group": "statutory",
+        "sensitivity": "pii",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "role",
+        "column": "role",
+        "label": "Access role",
+        "type": "enum",
+        "group": "employment",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [
+          {
+            "value": "staff",
+            "label": "Staff"
+          },
+          {
+            "value": "supervisor",
+            "label": "Supervisor"
+          },
+          {
+            "value": "store_manager",
+            "label": "Store Manager"
+          },
+          {
+            "value": "area_manager",
+            "label": "Area Manager"
+          },
+          {
+            "value": "finance",
+            "label": "Finance"
+          },
+          {
+            "value": "hq_admin",
+            "label": "HQ Admin"
+          }
+        ],
+        "description": null
+      },
+      {
+        "key": "employment_type",
+        "column": "employment_type",
+        "label": "Employment type",
+        "type": "enum",
+        "group": "employment",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [
+          {
+            "value": "full_time",
+            "label": "Full-time"
+          },
+          {
+            "value": "part_time",
+            "label": "Part-time"
+          },
+          {
+            "value": "contractor",
+            "label": "Contractor"
+          }
+        ],
+        "description": null
+      },
+      {
+        "key": "employment_status",
+        "column": "employment_status",
+        "label": "Status",
+        "type": "enum",
+        "group": "employment",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [
+          {
+            "value": "active",
+            "label": "Active"
+          },
+          {
+            "value": "inactive",
+            "label": "Inactive"
+          },
+          {
+            "value": "terminated",
+            "label": "Terminated"
+          }
+        ],
+        "description": null
+      },
+      {
+        "key": "hired_on",
+        "column": "hired_on",
+        "label": "Hired on",
+        "type": "date",
+        "group": "employment",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "terminated_on",
+        "column": "terminated_on",
+        "label": "Terminated on",
+        "type": "date",
+        "group": "employment",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "home_store_id",
+        "column": "home_store_id",
+        "label": "Home store",
+        "type": "store_ref",
+        "group": "employment",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "access_method",
+        "column": "access_method",
+        "label": "Sign-in method",
+        "type": "enum",
+        "group": "employment",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [
+          {
+            "value": "pin",
+            "label": "PIN"
+          },
+          {
+            "value": "sso",
+            "label": "Google SSO"
+          },
+          {
+            "value": "otp",
+            "label": "OTP"
+          }
+        ],
+        "description": null
+      },
+      {
+        "key": "pos_access_enabled",
+        "column": "pos_access_enabled",
+        "label": "POS access",
+        "type": "boolean",
+        "group": "employment",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "pt_weekly_hour_cap",
+        "column": "pt_weekly_hour_cap",
+        "label": "PT weekly hour cap",
+        "type": "number",
+        "group": "employment",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "pt_monthly_hour_cap",
+        "column": "pt_monthly_hour_cap",
+        "label": "PT monthly hour cap",
+        "type": "number",
+        "group": "employment",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "position_id",
+        "column": "position_id",
+        "label": "Seat",
+        "type": "position_ref",
+        "group": "org",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": "The designed org seat. Titles come from here."
+      },
+      {
+        "key": "comms_title",
+        "column": "comms_title",
+        "label": "Comms title override",
+        "type": "text",
+        "group": "org",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": "Per-person outward title. Blank = use the seat's comms title."
+      },
+      {
+        "key": "reports_to_id",
+        "column": "reports_to_id",
+        "label": "Reports to (override)",
+        "type": "staff_ref",
+        "group": "org",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": "Explicit manager. Blank = derive from the seat."
+      },
+      {
+        "key": "email",
+        "column": "email",
+        "label": "Email",
+        "type": "text",
+        "group": "contact",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "phone",
+        "column": "phone",
+        "label": "Phone",
+        "type": "text",
+        "group": "contact",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "emergency_contact_name",
+        "column": "emergency_contact_name",
+        "label": "Emergency contact",
+        "type": "text",
+        "group": "contact",
+        "sensitivity": "pii",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "emergency_contact_phone",
+        "column": "emergency_contact_phone",
+        "label": "Emergency phone",
+        "type": "text",
+        "group": "contact",
+        "sensitivity": "pii",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "address_line_1",
+        "column": "address_line_1",
+        "label": "Address line 1",
+        "type": "text",
+        "group": "address",
+        "sensitivity": "pii",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "address_line_2",
+        "column": "address_line_2",
+        "label": "Address line 2",
+        "type": "text",
+        "group": "address",
+        "sensitivity": "pii",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "unit_number",
+        "column": "unit_number",
+        "label": "Unit number",
+        "type": "text",
+        "group": "address",
+        "sensitivity": "pii",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "postal_code",
+        "column": "postal_code",
+        "label": "Postal code",
+        "type": "text",
+        "group": "address",
+        "sensitivity": "pii",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "country",
+        "column": "country",
+        "label": "Country",
+        "type": "text",
+        "group": "address",
+        "sensitivity": "pii",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "monthly_salary_cents",
+        "column": "monthly_salary_cents",
+        "label": "Monthly salary",
+        "type": "money_cents",
+        "group": "compensation",
+        "sensitivity": "compensation",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": "Monthly basic, integer cents. For salaried / full-time."
+      },
+      {
+        "key": "hourly_rate_cents",
+        "column": "hourly_rate_cents",
+        "label": "Hourly rate",
+        "type": "money_cents",
+        "group": "compensation",
+        "sensitivity": "compensation",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": "Hourly rate, integer cents. For part-time."
+      },
+      {
+        "key": "bank_name",
+        "column": "bank_name",
+        "label": "Bank",
+        "type": "text",
+        "group": "compensation",
+        "sensitivity": "compensation",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      },
+      {
+        "key": "bank_account_no",
+        "column": "bank_account_no",
+        "label": "Bank account",
+        "type": "text",
+        "group": "compensation",
+        "sensitivity": "compensation",
+        "required": false,
+        "writable": true,
+        "create_only": false,
+        "options": [],
+        "description": null
+      }
+    ],
+    "deletion": {
+      "real": "terminate",
+      "dummy": "purge"
+    }
+  },
+  "departments": {
+    "table": "staff_departments",
+    "function_table": "org_functions",
+    "many_to_many": true,
+    "primary_flag": "is_primary",
+    "fallback": "seat.function"
+  },
+  "permissions": {
+    "people_scopes": [
+      {
+        "scope": "staff:read",
+        "group": "People",
+        "label": "View the staff directory",
+        "detail": "Names, codes, roles, titles, departments, reporting lines. Needed to pick a teammate for a swap. Open Team → a name for the profile."
+      },
+      {
+        "scope": "staff:write",
+        "group": "People",
+        "label": "Create and edit staff records",
+        "detail": "Add hires, edit the full profile (pay, address, citizenship, custom fields), set PINs, terminate. Sensitive."
+      },
+      {
+        "scope": "org:read",
+        "group": "People",
+        "label": "View org chart and accountabilities",
+        "detail": "Seats, titles, reporting lines, the accountability register."
+      },
+      {
+        "scope": "org:write",
+        "group": "People",
+        "label": "Edit accountabilities and seats",
+        "detail": "Create seats, move reporting lines, assign accountability owners, record check-ins."
+      },
+      {
+        "scope": "reports:cost",
+        "group": "Reporting",
+        "label": "See pay rates and manpower cost",
+        "detail": "Hourly rates, monthly salary, race, citizenship, home address, NRIC, and cost-per-store figures. Treat as confidential."
+      }
+    ],
+    "default_matrix": {
+      "staff": [
+        "staff:read",
+        "org:read"
+      ],
+      "supervisor": [
+        "staff:read",
+        "org:read"
+      ],
+      "store_manager": [
+        "staff:read",
+        "org:read",
+        "org:write"
+      ],
+      "area_manager": [
+        "staff:read",
+        "staff:write",
+        "org:read",
+        "org:write",
+        "reports:cost"
+      ],
+      "finance": [
+        "staff:read",
+        "org:read",
+        "reports:cost"
+      ],
+      "hq_admin": [
+        "staff:read",
+        "staff:write",
+        "org:read",
+        "org:write",
+        "reports:cost"
+      ]
+    },
+    "role_labels": {
+      "staff": "Staff",
+      "supervisor": "Supervisor",
+      "store_manager": "Store Manager",
+      "area_manager": "Area Manager",
+      "finance": "Finance",
+      "hq_admin": "HQ Admin"
+    },
+    "sensitive_read": [
+      "reports:cost",
+      "staff:write"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "two-title-forms",
+      "topic": "titles",
+      "statement": "Every person has two titles. positions.title is internal/formal (payroll, contracts). positions.comms_title — or staff.comms_title if set — is what we say out loud. display_title is comms, falling back to formal. Never mix the two registers in one sentence."
+    },
+    {
+      "id": "hierarchy-seat-and-person",
+      "topic": "hierarchy",
+      "statement": "Reporting lines live on seats (positions.reports_to_id) AND optionally on the person (staff.reports_to_id). The person override wins, so an interim arrangement does not require rewriting the designed org. A vacant or multiply-held manager seat is reported, never guessed."
+    },
+    {
+      "id": "no-reporting-cycle",
+      "topic": "hierarchy",
+      "statement": "A reporting-line edit that would create a loop — including through a seat-derived manager — is refused. A loop makes the chart and every manager query unresolvable."
+    },
+    {
+      "id": "one-accountable-owner",
+      "topic": "accountability",
+      "statement": "Exactly one accountable owner per accountability. Owner attaches to a seat (survives turnover) with an optional owner_staff_id pin. The row may not have neither. A vacant or shared seat is a gap, not a fallback to a contributor."
+    },
+    {
+      "id": "contributors-are-separate",
+      "topic": "accountability",
+      "statement": "Contributors (contributor / consulted / informed) are a separate table from the owner. Collapsing them is how accountability becomes plural and therefore nobody's."
+    },
+    {
+      "id": "two-permission-layers",
+      "topic": "permissions",
+      "statement": "A scope answers what KIND of action. Actor identity answers WHOSE records. Both are required for personal data. A scope check alone is not enough. There is no hardcoded role floor for capability — the editable matrix is the rule."
+    },
+    {
+      "id": "write-means-others",
+      "topic": "permissions",
+      "statement": "*:write means acts on other people. Self-service (own availability, own correction, own leave) runs on the matching *:read plus the identity check. Do not grant a staff member a write scope to \"fix\" a 403 on their own record."
+    },
+    {
+      "id": "sensitive-pay-and-pii",
+      "topic": "permissions",
+      "statement": "Pay, race, citizenship, home address, NRIC and bank ride reports:cost or staff:write. A directory read (staff:read) never carries them."
+    },
+    {
+      "id": "money-is-integer-cents",
+      "topic": "money",
+      "statement": "Money is integer cents. Monthly salary and hourly rate are stored as monthly_salary_cents and hourly_rate_cents. The UI may show dollars; the record does not."
+    },
+    {
+      "id": "dates-are-sgt-calendar",
+      "topic": "time",
+      "statement": "Dates are YYYY-MM-DD on the Singapore calendar. Times are timestamptz. Weeks start Monday. roster.week_start is always a Monday."
+    },
+    {
+      "id": "citizenship-three-values",
+      "topic": "statutory",
+      "statement": "Citizenship (staff.residency) is one of citizen (Singaporean), pr, or foreigner. That is what CPF EZPay uses. Nationality is a separate free-text field."
+    },
+    {
+      "id": "real-staff-are-terminated",
+      "topic": "lifecycle",
+      "statement": "Real staff are terminated, never hard-deleted, so timesheets and the audit trail survive. Only is_dummy rows may be purged. Termination revokes POS access; re-activation does not restore it."
+    },
+    {
+      "id": "departments-are-functions",
+      "topic": "org",
+      "statement": "Departments are org_functions. A person may belong to several (staff_departments); is_primary is the home. If none are set, the profile infers the seat's function so the chart and the record agree."
+    },
+    {
+      "id": "workspace-id-on-every-query",
+      "topic": "tenancy",
+      "statement": "Every query filters workspace_id. The app talks to Postgres as the service role; RLS is on with zero policies. Tenancy is enforced in code."
+    },
+    {
+      "id": "audit-every-mutation",
+      "topic": "audit",
+      "statement": "Mutations write audit_events (before/after). Audit insert failure is logged, never thrown — a write must not roll back because the trail failed."
+    },
+    {
+      "id": "custom-fields-do-not-shadow",
+      "topic": "extensibility",
+      "statement": "Workspace custom fields extend the staff record without a migration. Their key cannot shadow a built-in field. Built-in columns stay first-class because payroll, CPF and the org resolver query them."
+    }
+  ]
+}

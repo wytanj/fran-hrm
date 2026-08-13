@@ -138,7 +138,9 @@
           <div class="mt-4 border-t border-line-soft pt-3">
             <p class="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">Reports to</p>
             <p v-if="reporting.manager" class="mt-0.5 text-[13.5px] text-ink">
-              {{ reporting.manager.display_name }}
+              <NuxtLink :to="`/team/${reporting.manager.id}`" class="press font-semibold text-brown underline decoration-brown/25">
+                {{ reporting.manager.display_name }}
+              </NuxtLink>
               <span class="text-muted">· {{ reporting.manager.display_title }}</span>
             </p>
             <p v-else class="mt-0.5 text-[13px] text-muted">Top of the chart</p>
@@ -158,14 +160,14 @@
             <p class="border-b border-line-soft px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">
               Direct reports ({{ reporting.direct_reports.length }})
             </p>
-            <div v-for="r in reporting.direct_reports" :key="r.id"
-              class="flex items-center gap-2.5 border-b border-line-soft px-3.5 py-2 last:border-0">
+            <NuxtLink v-for="r in reporting.direct_reports" :key="r.id" :to="`/team/${r.id}`"
+              class="press flex items-center gap-2.5 border-b border-line-soft px-3.5 py-2 last:border-0">
               <span class="flex h-6 w-6 items-center justify-center rounded-full bg-peach-soft text-[10px] font-bold text-brown">
                 {{ initials(r.display_name) }}
               </span>
               <span class="flex-1 text-[13px] font-semibold text-ink">{{ r.display_name }}</span>
               <span class="text-[11.5px] text-muted">{{ r.display_title }}</span>
-            </div>
+            </NuxtLink>
             <p v-if="!reporting.direct_reports.length" class="px-3.5 py-3 text-[12.5px] text-muted">No direct reports.</p>
           </div>
 

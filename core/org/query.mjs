@@ -227,6 +227,21 @@ export function wouldCreateCycle(positions, positionId, newParentId) {
   return false
 }
 
+/** Same loop check for an explicit staff.reports_to_id override. */
+export function wouldCreateStaffCycle(staffRows, staffId, newManagerId) {
+  if (!newManagerId) return false
+  if (staffId === newManagerId) return true
+  const byId = new Map((staffRows || []).map((s) => [s.id, s]))
+  let cursor = byId.get(newManagerId)
+  let hops = 0
+  while (cursor && hops < 50) {
+    if (cursor.id === staffId) return true
+    cursor = cursor.reports_to_id ? byId.get(cursor.reports_to_id) : null
+    hops += 1
+  }
+  return false
+}
+
 // ---------------------------------------------------------------------------
 // Accountabilities
 // ---------------------------------------------------------------------------

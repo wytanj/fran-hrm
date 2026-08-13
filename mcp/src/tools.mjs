@@ -2,13 +2,22 @@
 // model) + handleTool() dispatch. Handlers delegate to core/* query modules —
 // the same code the REST API runs, so agents and the web app always agree.
 import { randomUUID } from 'node:crypto'
+import bcrypt from 'bcryptjs'
 import {
   actorIsRankAndFile, assertCanReadStaff, assertManagerView,
   errorResult, getDb, getMcpActorRole, getMcpActorStaffId, getMcpClientName,
   getMcpScopes, jsonResult, requireScope, requireWorkspaceId,
 } from './context.mjs'
 import { TOOL_SCOPE_CATALOG, resolvePermittedTools } from './toolScopes.mjs'
-import { listStaff, resolveStaff, resolveStore, listStores, compactStaff } from '../../core/staff/query.mjs'
+import { listStaff, resolveStaff, resolveStore, listStores } from '../../core/staff/query.mjs'
+import {
+  canSeeSensitiveFields, createStaffRecord, deleteCustomField, deleteStaffRecord,
+  getStaffProfile, listCatalog, updateStaffRecord, upsertCustomField,
+} from '../../core/staff/profile.mjs'
+import {
+  compactVersion, ensureInForce, getVersion, listVersions, presentVersion, publishVersion, snapshotCurrent,
+} from '../../core/hrm-schema/store.mjs'
+import { readGitMeta } from '../../core/hrm-schema/git.mjs'
 import { getRoster, listShifts, listAvailability } from '../../core/roster/query.mjs'
 import { validateConstraints, explainConstraints } from '../../core/roster/constraints.mjs'
 import { formatRoster } from '../../core/roster/export.mjs'
@@ -56,7 +65,7 @@ export const toolDefinitions = [
   },
   {
     name: 'help_get',
-    description: 'Read a full help article by slug (use after help_search when you need the whole article). Slugs: clock-in-out, time-corrections, leave-requests, availability-and-swaps, overtime-and-hours, roster-publish, offline-fallback, connect-claude, signing-in, payroll-lock.',
+    description: 'Read a full help article by slug (use after help_search when you need the whole article). Slugs: clock-in-out, time-corrections, leave-requests, availability-and-swaps, overtime-and-hours, roster-publish, offline-fallback, connect-claude, signing-in, payroll-lock, staff-profiles, org-and-accountability, permissions, hrm-schema.',
     inputSchema: { type: 'object', properties: { slug: { type: 'string' } }, required: ['slug'] },
   },
   {
@@ -151,8 +160,8 @@ export const toolDefinitions = [
       type: 'object',
       properties: {
         search: { type: 'string', description: 'Name, employee code, or email fragment' },
-        role: { type: 'string', enum: ['staff', 'supervisor', 'store_manager', 'area_manager', 'hq_admin'] },
-        employment_type: { type: 'string', enum: ['full_time', 'part_time'] },
+        role: { type: 'string', enum: ['staff', 'supervisor', 'store_manager', 'area_manager', 'finance', 'hq_admin'] },
+        employment_type: { type: 'string', enum: ['full_time', 'part_time', 'contractor'] },
         employment_status: { type: 'string', enum: ['active', 'inactive', 'terminated'] },
         store: STORE_REF,
         limit: { type: 'number', description: 'Default 25, max 100' },
@@ -163,8 +172,184 @@ export const toolDefinitions = [
   },
   {
     name: 'staff_get',
-    description: 'Get one staff member by id, employee code, or unique name. Ambiguous names return the candidate list.',
+    description:
+      'Get one staff member by id, employee code, or unique name. Returns titles, departments, hierarchy (manager + direct reports), and — when the connection holds reports:cost or staff:write — salary, race, citizenship, home address, NRIC and custom fields. Ambiguous names return the candidate list.',
     inputSchema: { type: 'object', properties: { staff: STAFF_REF }, required: ['staff'] },
+  },
+  {
+    name: 'staff_create',
+    description:
+      'PRIVILEGED WRITE: create a staff record. display_name is required; employee_code is minted if omitted. Pass any catalog field at the top level (role, employment_type, residency, race, monthly_salary_cents, address_line_1, position_id or position code, reports_to, …), departments as function keys (retail_ops, marketing, …), and custom as { field_key: value }. Real staff are never hard-deleted later — they are terminated. Set is_dummy=true for a test person (PIN defaults to 123456). Only call when explicitly asked.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        display_name: { type: 'string' },
+        employee_code: { type: 'string', description: 'Optional; auto-minted (EMP-xxxx or DUMMY-xxxx)' },
+        email: { type: 'string' },
+        phone: { type: 'string' },
+        role: { type: 'string', enum: ['staff', 'supervisor', 'store_manager', 'area_manager', 'finance', 'hq_admin'] },
+        employment_type: { type: 'string', enum: ['full_time', 'part_time', 'contractor'] },
+        home_store_id: STORE_REF,
+        position_id: { type: 'string', description: 'Seat uuid or position code (SM, BA, FOUNDER)' },
+        reports_to_id: STAFF_REF,
+        comms_title: { type: 'string' },
+        hired_on: DATE,
+        monthly_salary_cents: { type: 'number', description: 'Monthly basic, integer cents' },
+        hourly_rate_cents: { type: 'number', description: 'Hourly rate, integer cents' },
+        race: { type: 'string', enum: ['chinese', 'malay', 'indian', 'eurasian', 'other'] },
+        residency: { type: 'string', enum: ['citizen', 'pr', 'foreigner'], description: 'Citizenship: Singaporean / PR / foreigner' },
+        nationality: { type: 'string' },
+        nric: { type: 'string' },
+        date_of_birth: DATE,
+        gender: { type: 'string', enum: ['female', 'male', 'non_binary', 'prefer_not_to_say', 'other'] },
+        address_line_1: { type: 'string' },
+        address_line_2: { type: 'string' },
+        unit_number: { type: 'string' },
+        postal_code: { type: 'string' },
+        country: { type: 'string' },
+        emergency_contact_name: { type: 'string' },
+        emergency_contact_phone: { type: 'string' },
+        bank_name: { type: 'string' },
+        bank_account_no: { type: 'string' },
+        departments: { type: 'array', items: { type: 'string' }, description: 'org_function keys; first is primary' },
+        custom: { type: 'object', description: 'Workspace custom field values, { key: value }' },
+        fields: { type: 'object', description: 'Alternate bag for any catalog key' },
+        pin: { type: 'string', description: '4–12 digit PIN' },
+        is_dummy: { type: 'boolean' },
+      },
+      required: ['display_name'],
+    },
+  },
+  {
+    name: 'staff_update',
+    description:
+      'PRIVILEGED WRITE: update a staff profile. Same field shape as staff_create (top-level catalog keys, departments[], custom{}). Omit a key to leave it; pass null to clear. Setting employment_status=terminated is the supported offboarding. departments replaces the membership list. Only call when explicitly asked.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        staff: STAFF_REF,
+        display_name: { type: 'string' },
+        email: { type: 'string' },
+        phone: { type: 'string' },
+        role: { type: 'string', enum: ['staff', 'supervisor', 'store_manager', 'area_manager', 'finance', 'hq_admin'] },
+        employment_type: { type: 'string', enum: ['full_time', 'part_time', 'contractor'] },
+        employment_status: { type: 'string', enum: ['active', 'inactive', 'terminated'] },
+        home_store_id: STORE_REF,
+        position_id: { type: 'string', description: 'Seat uuid or position code' },
+        reports_to_id: STAFF_REF,
+        comms_title: { type: 'string' },
+        hired_on: DATE,
+        terminated_on: DATE,
+        monthly_salary_cents: { type: 'number' },
+        hourly_rate_cents: { type: 'number' },
+        race: { type: 'string', enum: ['chinese', 'malay', 'indian', 'eurasian', 'other'] },
+        residency: { type: 'string', enum: ['citizen', 'pr', 'foreigner'] },
+        nationality: { type: 'string' },
+        nric: { type: 'string' },
+        date_of_birth: DATE,
+        gender: { type: 'string', enum: ['female', 'male', 'non_binary', 'prefer_not_to_say', 'other'] },
+        address_line_1: { type: 'string' },
+        address_line_2: { type: 'string' },
+        unit_number: { type: 'string' },
+        postal_code: { type: 'string' },
+        country: { type: 'string' },
+        emergency_contact_name: { type: 'string' },
+        emergency_contact_phone: { type: 'string' },
+        bank_name: { type: 'string' },
+        bank_account_no: { type: 'string' },
+        pt_weekly_hour_cap: { type: 'number' },
+        pt_monthly_hour_cap: { type: 'number' },
+        departments: { type: 'array', items: { type: 'string' }, description: 'Replace memberships; [] clears (seat function still inferred)' },
+        custom: { type: 'object', description: '{ key: value }; null clears one custom field' },
+        fields: { type: 'object' },
+        pin: { type: 'string' },
+      },
+      required: ['staff'],
+    },
+  },
+  {
+    name: 'staff_delete',
+    description:
+      'PRIVILEGED WRITE: remove a staff member. mode=terminate (default for real staff) sets them terminated so timesheets and audit survive. mode=purge hard-deletes and is refused unless the person is a dummy (is_dummy). mode=auto purges dummies and terminates everyone else. Only call when explicitly asked.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        staff: STAFF_REF,
+        mode: { type: 'string', enum: ['auto', 'terminate', 'purge'], description: 'Default auto' },
+      },
+      required: ['staff'],
+    },
+  },
+  {
+    name: 'staff_fields_list',
+    description:
+      'The staff profile field catalog: built-in HR columns (name, titles, salary, race, citizenship, address, …) plus any workspace-defined custom fields. Use this before staff_create / staff_update so you send valid keys and enum values.',
+    inputSchema: {
+      type: 'object',
+      properties: { include_inactive: { type: 'boolean' } },
+      required: [],
+    },
+  },
+  {
+    name: 'staff_field_upsert',
+    description:
+      'PRIVILEGED WRITE: create or update a workspace custom staff field. key is a slug (shirt_size, work_pass_expiry). type: text | number | date | boolean | enum | money_cents. sensitivity: directory (everyone with staff:read), pii or compensation (pay/identity — reports:cost or staff:write). enum needs options. Built-in keys cannot be shadowed. Only call when explicitly asked.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        key: { type: 'string', description: 'Slug, e.g. shirt_size' },
+        label: { type: 'string' },
+        description: { type: 'string' },
+        field_type: { type: 'string', enum: ['text', 'number', 'date', 'boolean', 'enum', 'money_cents'] },
+        field_group: { type: 'string', description: 'identity | employment | org | contact | address | statutory | compensation | custom' },
+        sensitivity: { type: 'string', enum: ['directory', 'pii', 'compensation'] },
+        options: { type: 'array', items: { type: ['string', 'object'] }, description: 'For enum: ["S","M"] or [{value,label}]' },
+        required: { type: 'boolean' },
+        sort_order: { type: 'number' },
+        is_active: { type: 'boolean' },
+      },
+      required: ['key'],
+    },
+  },
+  {
+    name: 'staff_field_delete',
+    description:
+      'PRIVILEGED WRITE: delete a workspace custom staff field and every stored value for it. Built-in fields cannot be deleted. Only call when explicitly asked.',
+    inputSchema: {
+      type: 'object',
+      properties: { field: { type: 'string', description: 'Custom field key or id' } },
+      required: ['field'],
+    },
+  },
+  {
+    name: 'hrm_schema_get',
+    description:
+      'The people schema currently IN FORCE for this workspace: staff fields, citizenship (Singaporean/PR/foreigner), titles, hierarchy, departments, people permissions and invariants. Returns JSON and verbose text. Use this instead of inventing what a staff record holds. HQ; needs hrm_schema:read.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        format: { type: 'string', enum: ['both', 'json', 'text'], description: 'Default both' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'hrm_schema_versions',
+    description: 'List people-schema versions (git sha, hash, which one is in force). HQ; needs hrm_schema:read.',
+    inputSchema: { type: 'object', properties: { limit: { type: 'number' } }, required: [] },
+  },
+  {
+    name: 'hrm_schema_publish',
+    description:
+      'PRIVILEGED WRITE: put a people-schema version in force (or snapshot the current git catalogs and publish that). The swap is one database transaction — there is never two in-force policies. Only call when an HQ admin explicitly asks.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        version: { type: 'string', description: 'Version number or uuid to publish. Omit with snapshot=true to publish current.' },
+        snapshot: { type: 'boolean', description: 'If true, snapshot current catalogs first, then publish that row.' },
+      },
+      required: [],
+    },
   },
   {
     name: 'hours_worked',
@@ -516,6 +701,16 @@ async function resolveOwnOr(db, workspaceId, ref) {
   return resolveStaff(db, workspaceId, actorId)
 }
 
+function mcpActor() {
+  return {
+    workspace_id: requireWorkspaceId(),
+    actor_kind: 'agent',
+    actor_id: getMcpActorStaffId(),
+    actor_name: getMcpClientName(),
+    source_type: 'mcp',
+  }
+}
+
 async function withAudit(name, requestId, entity, resultBody) {
   const db = getDb()
   await recordAudit(db, {
@@ -697,17 +892,123 @@ export async function handleTool(name, args = {}) {
       case 'staff_search': {
         requireScope('staff:read')
         const store = a.store ? await resolveStore(db(), ws(), a.store) : null
+        const includeSensitive = canSeeSensitiveFields(getMcpScopes())
         return jsonResult(await listStaff(db(), ws(), {
           search: a.search, role: a.role, employment_type: a.employment_type,
           employment_status: a.employment_status, store_id: store?.id,
           limit: a.limit, offset: a.offset,
-        }))
+        }, { includeSensitive, includeRate: includeSensitive }))
       }
 
       case 'staff_get': {
         requireScope('staff:read')
         const row = await resolveStaff(db(), ws(), a.staff)
-        return jsonResult({ staff: compactStaff(row) })
+        assertCanReadStaff(row.id, row.display_name)
+        const includeSensitive = canSeeSensitiveFields(getMcpScopes())
+        return jsonResult({
+          staff: await getStaffProfile(db(), ws(), row.id, { includeSensitive }),
+          note: includeSensitive
+            ? undefined
+            : 'Pay, citizenship, race, address and NRIC are omitted — this connection lacks reports:cost or staff:write.',
+        })
+      }
+
+      case 'staff_create': {
+        requireScope('staff:write')
+        if (!a.display_name) throw new Error('display_name is required')
+        if (a.pin) {
+          if (!/^\d{4,12}$/.test(String(a.pin))) throw new Error('PIN must be 4-12 digits')
+          a.pin_hash = bcrypt.hashSync(String(a.pin), 10)
+        } else if (a.is_dummy) {
+          a.pin_hash = bcrypt.hashSync('123456', 10)
+        }
+        const created = await createStaffRecord(db(), ws(), a, mcpActor())
+        return jsonResult({ staff: created, note: 'Created. Real staff are terminated, never purged.' })
+      }
+
+      case 'staff_update': {
+        requireScope('staff:write')
+        if (!a.staff) throw new Error('staff is required')
+        if (a.pin) {
+          if (!/^\d{4,12}$/.test(String(a.pin))) throw new Error('PIN must be 4-12 digits')
+          a.pin_hash = bcrypt.hashSync(String(a.pin), 10)
+        }
+        const updated = await updateStaffRecord(db(), ws(), a.staff, a, mcpActor())
+        return jsonResult({ staff: updated })
+      }
+
+      case 'staff_delete': {
+        requireScope('staff:write')
+        if (!a.staff) throw new Error('staff is required')
+        const result = await deleteStaffRecord(db(), ws(), a.staff, { mode: a.mode || 'auto', actor: mcpActor() })
+        return jsonResult(result)
+      }
+
+      case 'staff_fields_list': {
+        requireScope('staff:read')
+        const includeSensitive = canSeeSensitiveFields(getMcpScopes())
+        return jsonResult({
+          fields: await listCatalog(db(), ws(), { includeSensitive, includeInactive: !!a.include_inactive }),
+          note: 'Built-in keys write to staff columns. Custom keys write via staff_update custom.{key}.',
+        })
+      }
+
+      case 'staff_field_upsert': {
+        requireScope('staff:write')
+        if (!a.key) throw new Error('key is required')
+        const field = await upsertCustomField(db(), ws(), a, mcpActor())
+        return jsonResult({ field, note: `Use staff_update with custom.${field.key} to set a value.` })
+      }
+
+      case 'staff_field_delete': {
+        requireScope('staff:write')
+        if (!a.field) throw new Error('field (key or id) is required')
+        return jsonResult(await deleteCustomField(db(), ws(), a.field, mcpActor()))
+      }
+
+      case 'hrm_schema_get': {
+        requireScope('hrm_schema:read')
+        const { row } = await ensureInForce(db(), ws(), {
+          git: readGitMeta(),
+          actor: { ...mcpActor(), actor_id: getMcpActorStaffId() },
+        })
+        const presented = presentVersion(row)
+        const format = a.format || 'both'
+        const out = {
+          version: presented.version,
+          in_force: true,
+          git_sha: presented.git_sha,
+          git_describe: presented.git_describe,
+          content_hash: presented.content_hash,
+          published_at: presented.published_at,
+        }
+        if (format !== 'text') out.schema = presented.schema
+        if (format !== 'json') out.text = presented.text
+        return jsonResult(out)
+      }
+
+      case 'hrm_schema_versions': {
+        requireScope('hrm_schema:read')
+        return jsonResult({ versions: (await listVersions(db(), ws(), { limit: a.limit })).map(compactVersion) })
+      }
+
+      case 'hrm_schema_publish': {
+        requireScope('hrm_schema:write')
+        const actor = { ...mcpActor(), actor_id: getMcpActorStaffId() }
+        let targetId = null
+        if (a.snapshot || !a.version) {
+          const { row } = await snapshotCurrent(db(), ws(), { git: readGitMeta(), actor })
+          targetId = row.id
+        } else {
+          const found = await getVersion(db(), ws(), a.version)
+          if (!found) throw new Error(`No schema version "${a.version}". Call hrm_schema_versions.`)
+          targetId = found.id
+        }
+        const published = await publishVersion(db(), ws(), targetId, actor)
+        return jsonResult({
+          in_force: presentVersion(published),
+          note: `Version ${published.version} is now in force.`,
+        })
       }
 
       case 'hours_worked': {

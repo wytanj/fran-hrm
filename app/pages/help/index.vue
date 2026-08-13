@@ -82,6 +82,7 @@ const categories = [
   { key: 'attendance', label: 'Clocking & attendance' },
   { key: 'scheduling', label: 'Rosters & shifts' },
   { key: 'leave', label: 'Leave' },
+  { key: 'people', label: 'People & org' },
   { key: 'payroll', label: 'Payroll' },
   { key: 'claude', label: 'Claude' },
   { key: 'account', label: 'Your account' },

@@ -14,7 +14,10 @@
           <UiBadge v-if="node.vacancies" tone="warning">{{ node.vacancies }} vacant</UiBadge>
         </div>
         <p v-if="node.holders.length" class="mt-0.5 text-[12px] text-ink-soft">
-          {{ node.holders.map((h) => h.display_name).join(', ') }}
+          <template v-for="(h, i) in node.holders" :key="h.id">
+            <span v-if="i">, </span>
+            <NuxtLink :to="`/team/${h.id}`" class="press font-semibold text-brown underline decoration-brown/25">{{ h.display_name }}</NuxtLink>
+          </template>
         </p>
         <p v-else class="mt-0.5 text-[12px] italic text-warning">Unfilled seat</p>
         <p v-if="node.purpose" class="mt-0.5 text-[11.5px] leading-relaxed text-muted">{{ node.purpose }}</p>

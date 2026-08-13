@@ -14,7 +14,17 @@ export const TOOL_SCOPE_CATALOG = {
   stores_list: { scope: 'staff:read', action: 'List Fran stores/locations' },
   zones_list: { scope: 'zones:read', action: 'The mapped zones of a store floor (name, colour, position) — for scheduling & analytics' },
   staff_search: { scope: 'staff:read', action: 'Search the staff directory (name, code, role, store, FT/PT)' },
-  staff_get: { scope: 'staff:read', action: 'One staff member by id, employee code, or unique name' },
+  staff_get: { scope: 'staff:read', action: 'One staff member — titles, departments, hierarchy, and (if permitted) pay / PII' },
+  staff_create: { scope: 'staff:write', action: 'Create a staff record (hire or dummy)', privileged: true },
+  staff_update: { scope: 'staff:write', action: 'Update a staff profile, departments, reporting line or custom fields', privileged: true },
+  staff_delete: { scope: 'staff:write', action: 'Terminate a real staff member, or purge a dummy', privileged: true },
+  staff_fields_list: { scope: 'staff:read', action: 'The staff profile field catalog (built-in + workspace custom fields)' },
+  staff_field_upsert: { scope: 'staff:write', action: 'Create or update a workspace custom staff field', privileged: true },
+  staff_field_delete: { scope: 'staff:write', action: 'Delete a workspace custom staff field and its values', privileged: true },
+
+  hrm_schema_get: { scope: 'hrm_schema:read', action: 'The in-force people schema (JSON and/or verbose text)' },
+  hrm_schema_versions: { scope: 'hrm_schema:read', action: 'List published people-schema versions' },
+  hrm_schema_publish: { scope: 'hrm_schema:write', action: 'Put a people-schema version in force', privileged: true },
 
   // Org + accountability
   org_chart: { scope: 'org:read', action: 'The org chart: seats, titles, holders and vacancies' },

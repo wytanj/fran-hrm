@@ -29,7 +29,9 @@
 
     <UiBusy :busy="pending" label="Loading team…">
     <UiTable :columns="columns">
-      <tr v-for="m in team" :key="m.id" class="border-b border-line-soft last:border-0 hover:bg-surface-sunken/50">
+      <tr v-for="m in team" :key="m.id"
+        class="cursor-pointer border-b border-line-soft last:border-0 hover:bg-surface-sunken/50"
+        @click="navigateTo(`/team/${m.id}`)">
         <td class="px-3.5 py-2.5">
           <div class="flex items-center gap-2.5">
             <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-peach-soft text-[11px] font-bold text-brown">
@@ -47,6 +49,9 @@
           <p v-if="m.title && m.title !== m.display_title" class="text-[11.5px] text-muted">{{ m.title }}</p>
           <p v-if="!m.display_title" class="text-[12px] italic text-warning">no seat</p>
         </td>
+        <td class="px-3.5 py-2.5">
+          <p class="text-[12.5px] text-ink">{{ deptLabel(m) }}</p>
+        </td>
         <td class="px-3.5 py-2.5 text-muted">{{ roleLabel(m.role) }}</td>
         <td class="px-3.5 py-2.5">
           <UiBadge :tone="empTypeTone(m.employment_type)">{{ empTypeShort(m.employment_type) }}</UiBadge>
@@ -61,6 +66,9 @@
         <td class="px-3.5 py-2.5 text-center">
           <UiBadge :tone="m.employment_status === 'active' ? 'success' : 'danger'">{{ m.employment_status }}</UiBadge>
         </td>
+        <td class="px-3.5 py-2.5 text-right">
+          <NuxtLink :to="`/team/${m.id}`" class="press text-[12px] font-semibold text-brown" @click.stop>View</NuxtLink>
+        </td>
       </tr>
       <tr v-if="!team.length">
         <td :colspan="columns.length" class="px-3.5 py-8 text-center text-[13px] text-muted">No staff match those filters.</td>
@@ -68,7 +76,85 @@
     </UiTable>
     </UiBusy>
 
-    <p class="mt-2 text-[11.5px] text-muted">Pay rates are visible to area managers and above only.</p>
+    <p class="mt-2 text-[11.5px] text-muted">
+      Click a row to open the full profile (departments, hierarchy, pay and statutory fields).
+      Pay and identity details are visible only with the cost or staff-edit permission.
+    </p>
+
+    <!-- Workspace-defined profile fields — staff:write -->
+    <div v-if="fieldCatalog.can_edit" class="mt-6 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
+      <div class="flex flex-wrap items-center gap-2">
+        <h3 class="font-display text-[15px] font-bold text-ink">Custom profile fields</h3>
+        <span class="text-[12px] text-muted">Extend every staff record without a deploy — work-pass expiry, shirt size, locker…</span>
+        <button class="press ml-auto text-[12.5px] font-semibold text-brown" @click="showFields = !showFields">
+          {{ showFields ? 'Hide' : 'Open' }}
+        </button>
+      </div>
+      <div v-if="showFields" class="mt-3">
+        <div class="overflow-hidden rounded-md border border-line-soft">
+          <table class="w-full text-left text-[13px]">
+            <thead>
+              <tr class="border-b border-line bg-surface-sunken/60 text-[10.5px] font-semibold uppercase tracking-[0.5px] text-muted">
+                <th class="px-3 py-2">Key</th>
+                <th class="px-3 py-2">Label</th>
+                <th class="px-3 py-2">Type</th>
+                <th class="px-3 py-2">Sensitivity</th>
+                <th class="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="f in customFields" :key="f.key" class="border-b border-line-soft last:border-0">
+                <td class="px-3 py-2 font-mono text-[12px] text-muted">{{ f.key }}</td>
+                <td class="px-3 py-2 font-semibold text-ink">{{ f.label }}</td>
+                <td class="px-3 py-2 text-muted">{{ f.type }}</td>
+                <td class="px-3 py-2"><UiBadge :tone="f.sensitivity === 'directory' ? 'muted' : 'warning'">{{ f.sensitivity }}</UiBadge></td>
+                <td class="px-3 py-2 text-right">
+                  <button class="press text-[12px] font-semibold text-danger" :disabled="fieldBusy" @click="removeField(f)">Delete</button>
+                </td>
+              </tr>
+              <tr v-if="!customFields.length">
+                <td colspan="5" class="px-3 py-4 text-center text-[12.5px] text-muted">No custom fields yet. Built-in fields (salary, race, citizenship, address) are always present.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-3 flex flex-wrap items-end gap-2.5">
+          <label class="block">
+            <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Key</span>
+            <input v-model="newField.key" placeholder="shirt_size" class="h-9 w-36 rounded-md border border-line bg-white px-2.5 font-mono text-[12px]">
+          </label>
+          <label class="block">
+            <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Label</span>
+            <input v-model="newField.label" placeholder="Shirt size" class="h-9 w-40 rounded-md border border-line bg-white px-2.5 text-[13px]">
+          </label>
+          <label class="block">
+            <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Type</span>
+            <select v-model="newField.type" class="h-9 rounded-md border border-line bg-white px-2 text-[13px]">
+              <option value="text">Text</option>
+              <option value="number">Number</option>
+              <option value="date">Date</option>
+              <option value="boolean">Yes / no</option>
+              <option value="enum">List</option>
+              <option value="money_cents">Money</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Sensitivity</span>
+            <select v-model="newField.sensitivity" class="h-9 rounded-md border border-line bg-white px-2 text-[13px]">
+              <option value="directory">Directory</option>
+              <option value="pii">PII</option>
+              <option value="compensation">Pay</option>
+            </select>
+          </label>
+          <label v-if="newField.type === 'enum'" class="block">
+            <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Options</span>
+            <input v-model="newField.options" placeholder="S, M, L, XL" class="h-9 w-40 rounded-md border border-line bg-white px-2.5 text-[13px]">
+          </label>
+          <UiButton size="sm" :loading="fieldBusy" :disabled="!newField.key.trim() || !newField.label.trim()" @click="addField">Add field</UiButton>
+          <span v-if="fieldMsg" class="text-[12px]" :class="fieldErr ? 'text-danger' : 'text-success'">{{ fieldMsg }}</span>
+        </div>
+      </div>
+    </div>
 
     <!-- Add staff directly (no Google SSO needed) — area manager+ -->
     <div v-if="isAreaManager" class="mt-6 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
@@ -237,6 +323,53 @@ definePageMeta({ middleware: ['supervisor-only'] })
 
 const { isAreaManager } = useSession()
 
+const { data: fieldsRes, refresh: refreshFields } = await useFetch<any>('/api/v1/staff/profile-fields', { lazy: true })
+const fieldCatalog = computed<any>(() => fieldsRes.value || {})
+const customFields = computed<any[]>(() => (fieldCatalog.value.data || []).filter((f: any) => f.source === 'custom'))
+const showFields = ref(false)
+const fieldBusy = ref(false)
+const fieldMsg = ref('')
+const fieldErr = ref(false)
+const newField = reactive({ key: '', label: '', type: 'text', sensitivity: 'directory', options: '' })
+
+async function addField() {
+  fieldBusy.value = true; fieldMsg.value = ''; fieldErr.value = false
+  try {
+    const options = newField.type === 'enum'
+      ? newField.options.split(',').map((s) => s.trim()).filter(Boolean)
+      : undefined
+    await $fetch('/api/v1/staff/profile-fields', {
+      method: 'POST',
+      body: {
+        key: newField.key.trim(),
+        label: newField.label.trim(),
+        field_type: newField.type,
+        sensitivity: newField.sensitivity,
+        options,
+      },
+    })
+    fieldMsg.value = `Added ${newField.key}`
+    newField.key = ''; newField.label = ''; newField.options = ''
+    await refreshFields()
+  } catch (err: any) {
+    fieldErr.value = true
+    fieldMsg.value = err?.data?.message || err?.data?.statusMessage || 'Failed'
+  } finally { fieldBusy.value = false }
+}
+
+async function removeField(f: any) {
+  if (!confirm(`Delete field “${f.label}” and every stored value?`)) return
+  fieldBusy.value = true; fieldMsg.value = ''; fieldErr.value = false
+  try {
+    await $fetch(`/api/v1/staff/profile-fields/${f.id}`, { method: 'DELETE' })
+    fieldMsg.value = `Deleted ${f.key}`
+    await refreshFields()
+  } catch (err: any) {
+    fieldErr.value = true
+    fieldMsg.value = err?.data?.message || err?.data?.statusMessage || 'Failed'
+  } finally { fieldBusy.value = false }
+}
+
 const search = ref('')
 const typeFilter = ref('')
 const statusFilter = ref('active')
@@ -364,6 +497,7 @@ const columns = computed(() => {
     { key: 'name', label: 'Name' },
     { key: 'code', label: 'Code', width: '90px' },
     { key: 'title', label: 'Title' },
+    { key: 'dept', label: 'Department' },
     { key: 'role', label: 'Access role' },
     { key: 'type', label: 'Type', width: '70px' },
     { key: 'store', label: 'Store', width: '80px' },
@@ -371,6 +505,7 @@ const columns = computed(() => {
   ]
   if (isAreaManager.value) cols.push({ key: 'rate', label: 'Rate', align: 'right' })
   cols.push({ key: 'status', label: 'Status', align: 'center', width: '100px' })
+  cols.push({ key: 'view', label: '', align: 'right', width: '56px' })
   return cols
 })
 
@@ -390,7 +525,13 @@ function initials(name: string) {
 function roleLabel(role: string) {
   return ({
     staff: 'Staff', supervisor: 'Supervisor', store_manager: 'Store Manager',
-    area_manager: 'Area Manager', hq_admin: 'HQ Admin',
+    area_manager: 'Area Manager', finance: 'Finance', hq_admin: 'HQ Admin',
   } as Record<string, string>)[role] || role
+}
+function deptLabel(m: any) {
+  const depts = m.departments || []
+  if (!depts.length) return '—'
+  const primary = depts.find((d: any) => d.is_primary) || depts[0]
+  return depts.length > 1 ? `${primary.name} +${depts.length - 1}` : primary.name
 }
 </script>

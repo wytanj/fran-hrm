@@ -115,6 +115,54 @@ async function main() {
   }
   console.log(`staff seated: ${STAFF_SEATS.length}`)
 
+  // Departments — explicit memberships matching each seat's function.
+  // Farah also sits in Marketing (weekend content), so the profile is plural.
+  const { data: seated } = await db.from('staff')
+    .select('id, employee_code, position_id').eq('workspace_id', WS)
+  const posById = {}
+  for (const p of POSITIONS) posById[posIds[p.code]] = p
+  let deptCount = 0
+  for (const st of seated || []) {
+    const seat = posById[st.position_id]
+    if (!seat) continue
+    const { error } = await db.from('staff_departments').upsert({
+      workspace_id: WS, staff_id: st.id, function_id: fnIds[seat.fn], is_primary: true,
+    }, { onConflict: 'staff_id,function_id' })
+    if (error) throw new Error(`dept ${st.employee_code}: ${error.message}`)
+    deptCount += 1
+  }
+  const farah = (seated || []).find((s) => s.employee_code === 'PT001')
+  if (farah) {
+    const { error } = await db.from('staff_departments').upsert({
+      workspace_id: WS, staff_id: farah.id, function_id: fnIds.marketing, is_primary: false,
+    }, { onConflict: 'staff_id,function_id' })
+    if (error) throw new Error(`dept PT001 marketing: ${error.message}`)
+    deptCount += 1
+  }
+  console.log(`departments: ${deptCount}`)
+
+  const { error: fieldErr } = await db.from('staff_profile_fields').upsert({
+    workspace_id: WS, key: 'shirt_size', label: 'Shirt size',
+    field_type: 'enum', field_group: 'custom', sensitivity: 'directory',
+    options: [{ value: 'XS', label: 'XS' }, { value: 'S', label: 'S' }, { value: 'M', label: 'M' }, { value: 'L', label: 'L' }, { value: 'XL', label: 'XL' }],
+    sort_order: 10, is_active: true,
+  }, { onConflict: 'workspace_id,key' })
+  if (fieldErr) throw new Error(`field shirt_size: ${fieldErr.message}`)
+  const { data: shirtField } = await db.from('staff_profile_fields')
+    .select('id').eq('workspace_id', WS).eq('key', 'shirt_size').maybeSingle()
+  if (shirtField) {
+    const sizes = { HQ001: 'S', AM001: 'L', SM001: 'M', SV001: 'L', ST001: 'S', PT001: 'M', PT002: 'L' }
+    for (const [code, size] of Object.entries(sizes)) {
+      const sid = (seated || []).find((s) => s.employee_code === code)?.id
+      if (!sid) continue
+      await db.from('staff_profile_values').upsert({
+        workspace_id: WS, staff_id: sid, field_id: shirtField.id, value_text: size,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'staff_id,field_id' })
+    }
+  }
+  console.log('custom field: shirt_size')
+
   // Accountabilities
   let accCount = 0
   for (const a of ACCOUNTABILITIES) {

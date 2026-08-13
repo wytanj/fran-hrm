@@ -32,13 +32,13 @@ const HQ = '11111111-1111-4111-8111-000000000010'
 const ORCHARD = '11111111-1111-4111-8111-000000000011'
 
 const STAFF = [
-  { id: '22222222-1111-4111-8111-000000000001', code: 'HQ001', name: 'Ava Ong', role: 'hq_admin', type: 'full_time', store: HQ, email: 'ava@fran.sg' },
-  { id: '22222222-1111-4111-8111-000000000002', code: 'AM001', name: 'Ben Lim', role: 'area_manager', type: 'full_time', store: HQ, email: 'ben@fran.sg' },
-  { id: '22222222-1111-4111-8111-000000000003', code: 'SM001', name: 'Chloe Tan', role: 'store_manager', type: 'full_time', store: ORCHARD, email: 'chloe@fran.sg' },
-  { id: '22222222-1111-4111-8111-000000000004', code: 'SV001', name: 'Dylan Ng', role: 'supervisor', type: 'full_time', store: ORCHARD, email: 'dylan@fran.sg' },
-  { id: '22222222-1111-4111-8111-000000000005', code: 'ST001', name: 'Erin Goh', role: 'staff', type: 'full_time', store: ORCHARD, email: 'erin@fran.sg' },
-  { id: '22222222-1111-4111-8111-000000000006', code: 'PT001', name: 'Farah Iman', role: 'staff', type: 'part_time', store: ORCHARD, rate: 1500, capW: 30, capM: 120, email: 'farah@fran.sg' },
-  { id: '22222222-1111-4111-8111-000000000007', code: 'PT002', name: 'Gavin Lee', role: 'staff', type: 'part_time', store: ORCHARD, rate: 1400, capW: 25, capM: 100, email: 'gavin@fran.sg' },
+  { id: '22222222-1111-4111-8111-000000000001', code: 'HQ001', name: 'Ava Ong', role: 'hq_admin', type: 'full_time', store: HQ, email: 'ava@fran.sg', gender: 'female', salary: 1200000, race: 'chinese', residency: 'citizen', nationality: 'Singaporean', nric: 'S8000001A', dob: '1980-03-12', addr1: '12 Ardmore Park', unit: '#10-01', postal: '259960', phone: '90000001' },
+  { id: '22222222-1111-4111-8111-000000000002', code: 'AM001', name: 'Ben Lim', role: 'area_manager', type: 'full_time', store: HQ, email: 'ben@fran.sg', gender: 'male', salary: 800000, race: 'chinese', residency: 'citizen', nationality: 'Singaporean', nric: 'S8500002B', dob: '1985-07-04', addr1: '88 Zion Rd', unit: '#05-12', postal: '247792', phone: '90000002' },
+  { id: '22222222-1111-4111-8111-000000000003', code: 'SM001', name: 'Chloe Tan', role: 'store_manager', type: 'full_time', store: ORCHARD, email: 'chloe@fran.sg', gender: 'female', salary: 550000, race: 'chinese', residency: 'citizen', nationality: 'Singaporean', nric: 'S9000003C', dob: '1990-11-21', addr1: '391 Orchard Rd', unit: '#12-08', postal: '238872', phone: '90000003' },
+  { id: '22222222-1111-4111-8111-000000000004', code: 'SV001', name: 'Dylan Ng', role: 'supervisor', type: 'full_time', store: ORCHARD, email: 'dylan@fran.sg', gender: 'male', salary: 420000, race: 'malay', residency: 'citizen', nationality: 'Singaporean', nric: 'S9200004D', dob: '1992-02-18', addr1: '50 East Coast Rd', unit: '#03-04', postal: '428769', phone: '90000004' },
+  { id: '22222222-1111-4111-8111-000000000005', code: 'ST001', name: 'Erin Goh', role: 'staff', type: 'full_time', store: ORCHARD, email: 'erin@fran.sg', gender: 'female', salary: 320000, race: 'chinese', residency: 'citizen', nationality: 'Singaporean', nric: 'S9800005E', dob: '1998-06-09', addr1: '21 Geylang Rd', unit: '#08-22', postal: '389193', phone: '90000005' },
+  { id: '22222222-1111-4111-8111-000000000006', code: 'PT001', name: 'Farah Iman', role: 'staff', type: 'part_time', store: ORCHARD, rate: 1500, capW: 30, capM: 120, email: 'farah@fran.sg', gender: 'female', race: 'malay', residency: 'pr', nationality: 'Malaysian', nric: 'F9500006F', dob: '1995-09-30', prStart: '2023-01-15', addr1: '7 Jalan Bukit Merah', unit: '#14-03', postal: '150007', phone: '90000006' },
+  { id: '22222222-1111-4111-8111-000000000007', code: 'PT002', name: 'Gavin Lee', role: 'staff', type: 'part_time', store: ORCHARD, rate: 1400, capW: 25, capM: 100, email: 'gavin@fran.sg', gender: 'male', race: 'chinese', residency: 'foreigner', nationality: 'Malaysian', nric: 'G9900007G', dob: '1999-12-01', cpf: false, addr1: '3 Coleman St', unit: '#02-19', postal: '179804', phone: '90000007' },
 ]
 
 const TEMPLATES = [
@@ -79,13 +79,23 @@ async function main() {
   const pinHash = bcrypt.hashSync('123456', 10)
   for (const s of STAFF) {
     await sql`insert into public.staff
-      (id, workspace_id, employee_code, display_name, email, role, employment_type, home_store_id,
-       hourly_rate_cents, pt_weekly_hour_cap, pt_monthly_hour_cap, hired_on, pin_hash)
-      values (${s.id}, ${WS}, ${s.code}, ${s.name}, ${s.email}, ${s.role}, ${s.type}, ${s.store},
-       ${s.rate ?? null}, ${s.capW ?? null}, ${s.capM ?? null}, '2025-01-06', ${pinHash})
+      (id, workspace_id, employee_code, display_name, email, phone, role, employment_type, home_store_id,
+       hourly_rate_cents, monthly_salary_cents, pt_weekly_hour_cap, pt_monthly_hour_cap, hired_on, pin_hash,
+       gender, race, residency, nationality, nric, date_of_birth, pr_start_date, cpf_applicable,
+       address_line_1, unit_number, postal_code, country)
+      values (${s.id}, ${WS}, ${s.code}, ${s.name}, ${s.email}, ${s.phone ?? null}, ${s.role}, ${s.type}, ${s.store},
+       ${s.rate ?? null}, ${s.salary ?? null}, ${s.capW ?? null}, ${s.capM ?? null}, '2025-01-06', ${pinHash},
+       ${s.gender ?? null}, ${s.race ?? null}, ${s.residency ?? null}, ${s.nationality ?? null},
+       ${s.nric ?? null}, ${s.dob ?? null}, ${s.prStart ?? null}, ${s.cpf !== false},
+       ${s.addr1 ?? null}, ${s.unit ?? null}, ${s.postal ?? null}, 'SG')
       on conflict (id) do update set display_name = excluded.display_name, role = excluded.role,
         employment_type = excluded.employment_type, home_store_id = excluded.home_store_id,
-        hourly_rate_cents = excluded.hourly_rate_cents`
+        hourly_rate_cents = excluded.hourly_rate_cents, monthly_salary_cents = excluded.monthly_salary_cents,
+        phone = excluded.phone, gender = excluded.gender, race = excluded.race, residency = excluded.residency,
+        nationality = excluded.nationality, nric = excluded.nric, date_of_birth = excluded.date_of_birth,
+        pr_start_date = excluded.pr_start_date, cpf_applicable = excluded.cpf_applicable,
+        address_line_1 = excluded.address_line_1, unit_number = excluded.unit_number,
+        postal_code = excluded.postal_code, country = excluded.country`
     await sql`insert into public.staff_store_assignments (id, workspace_id, staff_id, store_id, is_primary)
       values (${detId('assign', s.id, s.store)}, ${WS}, ${s.id}, ${s.store}, true)
       on conflict (staff_id, store_id) do nothing`

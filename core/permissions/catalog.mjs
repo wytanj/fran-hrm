@@ -8,8 +8,8 @@
 // attendance:write should be able to fix their OWN timesheet, not everyone's.
 
 export const SCOPES = [
-  { scope: 'staff:read', group: 'People', label: 'View the staff directory', detail: 'Names, codes, roles, stores. Needed to pick a teammate for a swap.' },
-  { scope: 'staff:write', group: 'People', label: 'Create and edit staff records', detail: 'Add hires, change roles, set PINs, terminate. Sensitive.' },
+  { scope: 'staff:read', group: 'People', label: 'View the staff directory', detail: 'Names, codes, roles, titles, departments, reporting lines. Needed to pick a teammate for a swap. Open Team → a name for the profile.' },
+  { scope: 'staff:write', group: 'People', label: 'Create and edit staff records', detail: 'Add hires, edit the full profile (pay, address, citizenship, custom fields), set PINs, terminate. Sensitive.' },
   { scope: 'org:read', group: 'People', label: 'View org chart and accountabilities', detail: 'Seats, titles, reporting lines, the accountability register.' },
   { scope: 'org:write', group: 'People', label: 'Edit accountabilities and seats', detail: 'Create seats, move reporting lines, assign accountability owners, record check-ins.' },
 
@@ -26,7 +26,7 @@ export const SCOPES = [
   { scope: 'leave:approve', group: 'Leave', label: 'Approve or reject leave', detail: 'Debits the balance and blocks roster slots.' },
 
   { scope: 'reports:read', group: 'Reporting', label: 'View hours and attendance reports', detail: 'Worked hours, OT, adherence exports.' },
-  { scope: 'reports:cost', group: 'Reporting', label: 'See pay rates and manpower cost', detail: 'Hourly rates and cost-per-store figures. Treat as confidential.' },
+  { scope: 'reports:cost', group: 'Reporting', label: 'See pay rates and manpower cost', detail: 'Hourly rates, monthly salary, race, citizenship, home address, NRIC, and cost-per-store figures. Treat as confidential.' },
 
   { scope: 'payroll:lock', group: 'Payroll', label: 'Approve, lock and reopen pay periods', detail: 'Locking makes timesheets read-only; reopening a paid period needs care.' },
   { scope: 'payroll:settings', group: 'Payroll', label: 'Manage CPF & pay settings', detail: 'CPF/EOR configuration and pay settings (Singapore). Finance and HQ only — every change is logged to the control plane.' },
@@ -34,6 +34,9 @@ export const SCOPES = [
 
   { scope: 'zones:read', group: 'Stores', label: 'View store zones and layouts', detail: 'The mapped zones of a store floor — for scheduling, analytics and (later) vision models.' },
   { scope: 'zones:write', group: 'Stores', label: 'Create and edit store zones', detail: 'Draw and name the zones of a store layout. Store managers and above.' },
+
+  { scope: 'hrm_schema:read', group: 'Admin', label: 'View the in-force people schema', detail: 'The versioned HRM people policy (JSON + prose) — what Fran is actually running.' },
+  { scope: 'hrm_schema:write', group: 'Admin', label: 'Publish a people-schema version', detail: 'Snapshot the git catalogs and put a version in force. HQ only by default.' },
 
   { scope: 'connector:manage', group: 'Admin', label: 'Manage the Claude connector', detail: 'Generate OAuth credentials, invite staff, disconnect people.' },
 
@@ -71,13 +74,14 @@ export const DEFAULT_ROLE_MATRIX = {
   // and approves no leave.
   finance: ['staff:read', 'org:read', 'roster:read', 'roster:history', 'attendance:read', 'leave:read', 'reports:read', 'reports:cost', 'payroll:lock', 'payroll:settings', 'payroll:process', 'zones:read'],
   hq_admin: [...SCOPE_KEYS.filter((s) => s !== 'pos:sync')],
+  // hrm_schema:* is HQ-only in the fallback too — not a seniority ladder.
 }
 
 /** Scopes that meaningfully change data or expose sensitive figures. */
 export const SENSITIVE_SCOPES = [
   'staff:write', 'org:write', 'roster:publish', 'attendance:write',
   'leave:approve', 'reports:cost', 'payroll:lock', 'payroll:settings',
-  'payroll:process', 'connector:manage',
+  'payroll:process', 'connector:manage', 'hrm_schema:write',
 ]
 
 export function scopeMeta(scope) {

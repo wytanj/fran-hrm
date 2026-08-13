@@ -117,7 +117,10 @@ const groups = computed(() => [
           { to: '/reports?tab=hours', label: 'Reports', icon: '◲' },
           ...(isFinanceOrHq.value ? [{ to: '/payroll', label: 'Payroll', icon: '◎' }] : []),
           { to: '/permissions', label: 'Permissions', icon: '⚿' },
-          ...(isHqAdmin.value ? [{ to: '/connect-claude', label: 'Connect Claude', icon: '✦' }] : []),
+          ...(isHqAdmin.value ? [
+            { to: '/hrm-schema', label: 'HRM schema', icon: '§' },
+            { to: '/connect-claude', label: 'Connect Claude', icon: '✦' },
+          ] : []),
         ],
       }]
     : []),

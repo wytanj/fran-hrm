@@ -44,7 +44,7 @@ Resolved in this order:
 
 If that seat is **vacant**, or has **several holders**, FranHRM says so instead of guessing — a wrong answer here would put the wrong people in a 1:1.
 
-See your own line under **Org & accountability → My line**, or ask Claude *"who do I report to?"*
+See your own line under **Org & accountability → My line**, open anyone from **Team → their name**, or ask Claude *"who do I report to?"* Names on the chart and on a profile link to that person's full record (departments, both titles, reporting line, and — if you hold the cost or staff-edit permission — pay and statutory identity). See [Staff profiles](/help/staff-profiles).
 
 ## The accountability model
 

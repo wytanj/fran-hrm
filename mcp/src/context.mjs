@@ -127,7 +127,8 @@ export const MCP_SCOPE_PROFILES = {
     'roster:read', 'roster:write', 'roster:publish',
     'attendance:read', 'attendance:write',
     'leave:read', 'leave:write', 'leave:approve',
-    'reports:read',
+    'reports:read', 'reports:cost',
+    'hrm_schema:read', 'hrm_schema:write',
   ],
 }
 

@@ -30,8 +30,8 @@ The **write** permissions mean *acting on other people*: building the roster, ap
 
 | Group | Permission | Means |
 |---|---|---|
-| People | View the staff directory | Names, codes, roles — needed to pick a teammate for a swap |
-| People | Create and edit staff records | Add hires, change roles, reset PINs, terminate. Also the permission that lets someone edit this matrix |
+| People | View the staff directory | Names, codes, roles, titles, departments and reporting lines — needed to pick a teammate for a swap. Open **Team → a name** for the full profile |
+| People | Create and edit staff records | Add hires, change the profile (salary, address, citizenship, custom fields), reset PINs, terminate. Also the permission that lets someone edit this matrix |
 | People | View / edit org chart and accountabilities | Seats, reporting lines, the accountability register |
 | Scheduling | View rosters | Published rosters, plus your own availability and swap requests |
 | Scheduling | Build rosters for others | Drafts, shift assignment, deciding swaps, setting anyone's availability |
@@ -40,8 +40,9 @@ The **write** permissions mean *acting on other people*: building the roster, ap
 | Attendance | Manage others' attendance | Approve corrections, manual entries, offline import, store QR, review flags |
 | Leave | View / submit / **approve** | Approving debits the balance and blocks roster slots |
 | Reporting | View hours and attendance reports | Worked hours, OT, exports |
-| Reporting | **See pay rates and manpower cost** | Confidential — hourly rates and cost per store |
+| Reporting | **See pay rates and manpower cost** | Confidential — hourly rates, monthly salary, race, citizenship, home address, NRIC, and cost per store |
 | Payroll | **Approve, lock and reopen pay periods** | Locking makes timesheets read-only |
+| Admin | View / **publish the people schema** | The versioned in-force HRM policy (JSON + prose). HQ by default |
 | Admin | Manage the Claude connector | Generate credentials, invite staff, disconnect people |
 
 The bold ones are the consequential ones. Grant them deliberately.
