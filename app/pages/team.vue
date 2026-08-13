@@ -158,7 +158,8 @@
           <UiBadge tone="muted">{{ roleLabel(i.role) }}</UiBadge>
           <UiBadge v-if="i.expired" tone="danger">expired</UiBadge>
           <span class="text-[11px] text-muted">invited by {{ i.invited_by || '—' }}</span>
-          <button class="press ml-auto text-[12px] font-semibold text-danger" @click="revokeInvite(i)">Revoke</button>
+          <button class="press ml-auto text-[12px] font-semibold text-brown" @click="copyInvite(i)">{{ copiedInvite === i.id ? 'Copied ✓' : 'Copy link' }}</button>
+          <button class="press text-[12px] font-semibold text-danger" @click="revokeInvite(i)">Revoke</button>
         </div>
       </div>
     </div>
@@ -299,6 +300,15 @@ async function sendInvite() {
     invite.email = ''
     await refreshInvites()
   } catch (err: any) { inviteErr.value = true; inviteMsg.value = err?.data?.message || err?.data?.statusMessage || 'Failed' } finally { inviting.value = false }
+}
+const copiedInvite = ref('')
+async function copyInvite(i: any) {
+  const url = `${window.location.origin}/invite/${i.token}`
+  try {
+    await navigator.clipboard.writeText(url)
+    copiedInvite.value = i.id
+    setTimeout(() => { if (copiedInvite.value === i.id) copiedInvite.value = '' }, 1500)
+  } catch { inviteErr.value = false; inviteMsg.value = url }
 }
 async function revokeInvite(i: any) {
   await $fetch(`/api/v1/workspace-invites/${i.id}`, { method: 'DELETE' }).catch(() => {})
