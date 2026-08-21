@@ -5,7 +5,7 @@ summary: Say what cover you need; FranHRM assigns it around leave, availability 
 category: scheduling
 primary_path: /roster-builder
 related_paths: [/roster, /availability]
-intent_tags: [generate roster, auto roster, ai roster, build roster automatically, constraints, coverage, unfilled shifts, roster generator]
+intent_tags: [generate roster, auto roster, ai roster, build roster automatically, constraints, coverage, unfilled shifts, roster generator, lock availability, freeze availability, team availability]
 audience: [supervisor, store_manager, area_manager, hq_admin]
 sort_order: 62
 ---
@@ -28,6 +28,8 @@ You describe the *shape* of the week. FranHRM does the assignment.
 | OT threshold | 44h | Past this, a warning is raised |
 
 **Always enforced, whether you ask or not:** approved *and pending* leave, submitted availability, and part-time weekly hour caps. You do not need to encode these.
+
+**Team availability** on this page shows each person's submitted preference for the week you are planning. Lock a date (or the whole week) before you generate so a late edit cannot invalidate the proposal. Unlock a date if someone genuinely needs to change it. Staff cannot lock or unlock their own dates; you can still edit availability yourself.
 
 ## What you get
 

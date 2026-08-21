@@ -21,7 +21,7 @@
           { key: 'day', label: 'Day', width: '150px' },
           { key: 'pref', label: 'Preference' },
           { key: 'window', label: 'Time window', width: '220px' },
-          { key: 'locked', label: '', align: 'right', width: '90px' },
+          { key: 'locked', label: '', align: 'right', width: '120px' },
         ]">
           <tr v-for="day in days" :key="day.date" class="border-b border-line-soft last:border-0"
             :class="day.locked ? 'bg-surface-sunken/60' : ''">
@@ -50,7 +50,11 @@
               <span v-else class="text-[12.5px] text-muted">—</span>
             </td>
             <td class="px-3.5 py-2.5 text-right">
-              <UiBadge v-if="day.locked" tone="muted">locked</UiBadge>
+              <template v-if="day.managerLock">
+                <UiBadge tone="warning" :title="managerLockHint(day)">locked</UiBadge>
+                <p class="mt-0.5 text-[10.5px] text-muted">{{ managerLockBy(day) }}</p>
+              </template>
+              <UiBadge v-else-if="day.locked" tone="muted">locked</UiBadge>
               <UiBadge v-else-if="day.submitted" tone="success">saved</UiBadge>
             </td>
           </tr>
@@ -110,6 +114,7 @@ const kinds = [
 interface DayRow {
   date: string; dow: string; dayNum: string; month: string
   kind: string; start: string; end: string; locked: boolean; submitted: boolean
+  managerLock: { locked_at?: string; locked_by?: { display_name?: string; employee_code?: string } | null } | null
 }
 const days = ref<DayRow[]>([])
 
@@ -128,9 +133,11 @@ const myShifts = computed<any[]>(() =>
 
 watch([weekStart, availRes], () => {
   const existing: any[] = availRes.value?.data || []
+  const locks: any[] = availRes.value?.locks || []
   days.value = Array.from({ length: 7 }, (_, i) => {
     const date = addDays(weekStart.value, i)
     const row = existing.find((a) => a.work_date === date)
+    const managerLock = locks.find((l) => l.work_date === date) || null
     const d = new Date(`${date}T00:00:00Z`)
     return {
       date,
@@ -140,8 +147,9 @@ watch([weekStart, availRes], () => {
       kind: row?.kind || 'available',
       start: row?.start_time?.slice(0, 5) || '10:00',
       end: row?.end_time?.slice(0, 5) || '21:30',
-      locked: date < cutoffDate,
+      locked: date < cutoffDate || Boolean(managerLock),
       submitted: Boolean(row),
+      managerLock,
     }
   })
 }, { immediate: true })
@@ -161,7 +169,9 @@ async function save() {
   const editable = days.value.filter((d) => !d.locked)
   if (!editable.length) {
     messageTone.value = 'error'
-    message.value = 'Every day in this week is past the cutoff.'
+    message.value = days.value.some((d) => d.managerLock)
+      ? 'Every day in this week is locked. Ask your manager to unlock a date if you need to change it.'
+      : 'Every day in this week is past the cutoff.'
     saving.value = false
     return
   }
@@ -186,6 +196,21 @@ async function save() {
   } finally { saving.value = false }
 }
 
+function managerLockBy(day: DayRow) {
+  return day.managerLock?.locked_by?.display_name || 'Manager'
+}
+function managerLockHint(day: DayRow) {
+  const name = managerLockBy(day)
+  const at = day.managerLock?.locked_at
+    ? new Date(day.managerLock.locked_at).toLocaleString('en-SG', {
+      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+      hour12: false, timeZone: 'Asia/Singapore',
+    })
+    : null
+  return at
+    ? `Locked by ${name} on ${at} while the roster is being built. Ask them to unlock it if you need to change this day.`
+    : `Locked by ${name} while the roster is being built. Ask them to unlock it if you need to change this day.`
+}
 function shiftWeek(n: number) { weekStart.value = addDays(weekStart.value, n) }
 function fmtShort(date: string) {
   return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', timeZone: 'UTC' })
