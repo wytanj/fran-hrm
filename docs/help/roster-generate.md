@@ -5,7 +5,7 @@ summary: Say what cover you need; FranHRM assigns it around leave, availability 
 category: scheduling
 primary_path: /roster-builder
 related_paths: [/roster, /availability]
-intent_tags: [generate roster, auto roster, ai roster, build roster automatically, constraints, coverage, unfilled shifts, roster generator, lock availability, freeze availability, team availability]
+intent_tags: [generate roster, auto roster, ai roster, build roster automatically, constraints, coverage, unfilled shifts, roster generator, lock availability, freeze availability, team availability, shift templates, hour blocks, add a shift, 3-hour shift, retire a shift]
 audience: [supervisor, store_manager, area_manager, hq_admin]
 sort_order: 62
 ---
@@ -16,7 +16,9 @@ You describe the *shape* of the week. FranHRM does the assignment.
 
 ## What you supply
 
-**Cover** — how many people you need on each shift, each day. In **Roster builder → Generate** that is a grid: rows are days, columns are your shift templates, cells are headcount.
+**Cover** — how many people you need on each shift, each day. In **Roster builder → Generate** that is a grid: rows are days, columns are your shift blocks (templates), cells are headcount.
+
+**Shift blocks** — the named hour ranges that become those columns (Opening 09:30–18:30, or an ad hoc 3-hour holiday block). They are not a fixed list. Open **Manage shift blocks** on the same Generate tab to add one, or retire one you no longer use. Retired blocks drop off the grid; past shifts keep their original label. Names are free text. A block is shared across stores unless you scope it to one store.
 
 **Rules** — the limits the result must respect:
 

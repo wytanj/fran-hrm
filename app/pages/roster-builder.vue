@@ -70,6 +70,85 @@
           </div>
 
           <div class="mt-4 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
+            <button type="button" class="flex w-full items-center justify-between text-left" @click="showBlocks = !showBlocks">
+              <h2 class="font-display text-[16px] font-bold text-ink">Manage shift blocks</h2>
+              <span class="text-[12px] font-semibold text-brown">{{ showBlocks ? 'Hide' : 'Show' }}</span>
+            </button>
+            <p class="mt-1 text-[12.5px] text-muted">
+              Named hour blocks become columns in the grid above. Retire one to hide it; past shifts keep their label.
+            </p>
+            <template v-if="showBlocks">
+              <UiTable class="mt-3" :columns="[
+                { key: 'name', label: 'Name' },
+                { key: 'hours', label: 'Hours' },
+                { key: 'break', label: 'Break' },
+                { key: 'scope', label: 'Scope' },
+                { key: 'act', label: '', align: 'right', width: '80px' },
+              ]">
+                <tr v-for="t in templates" :key="t.id" class="border-b border-line-soft last:border-0">
+                  <td class="px-3.5 py-2 font-semibold">{{ t.name }}</td>
+                  <td class="px-3.5 py-2 tabular-nums">
+                    {{ t.start_time.slice(0, 5) }}–{{ t.end_time.slice(0, 5) }}
+                    <span class="ml-1.5 text-muted">{{ durationLabel(t.start_time, t.end_time) }}</span>
+                  </td>
+                  <td class="px-3.5 py-2 tabular-nums">{{ t.break_minutes }}m</td>
+                  <td class="px-3.5 py-2">
+                    <UiBadge :tone="t.store_id ? 'accent' : 'muted'">{{ storeScope(t) }}</UiBadge>
+                  </td>
+                  <td class="px-3.5 py-2 text-right">
+                    <button type="button" class="press text-[12px] font-semibold text-danger disabled:opacity-40"
+                      :disabled="retiringId === t.id" @click="retireBlock(t)">
+                      Retire
+                    </button>
+                  </td>
+                </tr>
+                <tr v-if="!templates.length">
+                  <td colspan="5" class="px-3.5 py-3 text-[12.5px] text-muted">No shift blocks yet. Add one below.</td>
+                </tr>
+              </UiTable>
+
+              <form class="mt-3 grid gap-3 border-t border-line-soft pt-3 sm:grid-cols-2 lg:grid-cols-5" @submit.prevent="addBlock">
+                <label class="block">
+                  <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Name</span>
+                  <input v-model="newBlock.name" required placeholder="e.g. Holiday 3h"
+                    class="h-9 w-full rounded-md border border-line bg-white px-2 text-[13px]">
+                </label>
+                <label class="block">
+                  <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Start</span>
+                  <input v-model="newBlock.start" type="time" required
+                    class="h-9 w-full rounded-md border border-line bg-white px-2 text-[13px]">
+                </label>
+                <label class="block">
+                  <span class="mb-1 block text-[11px] font-semibold text-ink-soft">End</span>
+                  <input v-model="newBlock.end" type="time" required
+                    class="h-9 w-full rounded-md border border-line bg-white px-2 text-[13px]">
+                </label>
+                <label class="block">
+                  <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Break (min)</span>
+                  <input v-model.number="newBlock.break_minutes" type="number" min="0" step="1"
+                    class="h-9 w-full rounded-md border border-line bg-white px-2 text-[13px]">
+                </label>
+                <label class="block">
+                  <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Scope</span>
+                  <select v-model="newBlock.store_id"
+                    class="h-9 w-full rounded-md border border-line bg-white px-2 text-[13px]">
+                    <option value="">Shared across stores</option>
+                    <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.name }}</option>
+                  </select>
+                </label>
+                <div class="flex flex-wrap items-end gap-2 sm:col-span-2 lg:col-span-5">
+                  <UiButton type="submit" size="sm" :loading="savingBlock"
+                    :disabled="!newBlock.name.trim() || !newBlock.start || !newBlock.end">
+                    Add a block
+                  </UiButton>
+                  <span v-if="newBlockDuration" class="text-[12.5px] text-muted">{{ newBlockDuration }}</span>
+                  <p v-if="blockError" class="text-[12.5px] text-danger">{{ blockError }}</p>
+                </div>
+              </form>
+            </template>
+          </div>
+
+          <div class="mt-4 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
             <h2 class="font-display text-[16px] font-bold text-ink">Rules</h2>
             <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <label class="block">
@@ -478,7 +557,7 @@ const { data: storesRes } = await useFetch<any>('/api/v1/stores', { lazy: true }
 const stores = computed<any[]>(() => (storesRes.value?.data || []).filter((s: any) => s.kind === 'store'))
 watch(stores, (list) => { if (!storeId.value && list.length) storeId.value = list[0].id }, { immediate: true })
 
-const { data: templatesRes } = await useFetch<any>('/api/v1/templates', { lazy: true })
+const { data: templatesRes, refresh: refreshTemplates } = await useFetch<any>('/api/v1/templates', { lazy: true })
 const templates = computed<any[]>(() => templatesRes.value?.data || [])
 
 const availKinds = [
@@ -608,6 +687,72 @@ function fillWeekdays() {
 }
 function clearCover() {
   for (const d of days) cover[d.key] = {}
+}
+
+function hhmm(value: string) {
+  return String(value || '').slice(0, 5)
+}
+function minutesOf(value: string) {
+  const [h, m] = hhmm(value).split(':').map(Number)
+  return (h || 0) * 60 + (m || 0)
+}
+function durationLabel(start: string, end: string) {
+  const mins = minutesOf(end) - minutesOf(start)
+  if (!Number.isFinite(mins) || mins <= 0) return ''
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return m ? `${h}h ${m}m` : `${h}h`
+}
+function storeScope(t: any) {
+  if (!t.store_id) return 'Shared'
+  return t.store?.name || stores.value.find((s: any) => s.id === t.store_id)?.name || 'Store'
+}
+
+const showBlocks = ref(false)
+const savingBlock = ref(false)
+const retiringId = ref('')
+const blockError = ref('')
+const newBlock = reactive({ name: '', start: '', end: '', break_minutes: 60, store_id: '' })
+const newBlockDuration = computed(() => durationLabel(newBlock.start, newBlock.end))
+
+function resetNewBlock() {
+  newBlock.name = ''
+  newBlock.start = ''
+  newBlock.end = ''
+  newBlock.break_minutes = 60
+  newBlock.store_id = ''
+}
+
+async function addBlock() {
+  savingBlock.value = true
+  blockError.value = ''
+  try {
+    await $fetch('/api/v1/templates', {
+      method: 'POST',
+      body: {
+        name: newBlock.name,
+        start: newBlock.start,
+        end: newBlock.end,
+        break_minutes: newBlock.break_minutes,
+        store_id: newBlock.store_id || null,
+      },
+    })
+    resetNewBlock()
+    await refreshTemplates()
+  } catch (err: any) {
+    blockError.value = err?.data?.message || err?.data?.statusMessage || 'Could not add that block'
+  } finally { savingBlock.value = false }
+}
+
+async function retireBlock(t: any) {
+  retiringId.value = t.id
+  blockError.value = ''
+  try {
+    await $fetch(`/api/v1/templates/${t.id}`, { method: 'DELETE' })
+    await refreshTemplates()
+  } catch (err: any) {
+    blockError.value = err?.data?.message || err?.data?.statusMessage || 'Could not retire that block'
+  } finally { retiringId.value = '' }
 }
 
 function buildConstraints() {
