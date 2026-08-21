@@ -18,7 +18,8 @@ import {
   compactVersion, ensureInForce, getVersion, listVersions, presentVersion, publishVersion, snapshotCurrent,
 } from '../../core/hrm-schema/store.mjs'
 import { readGitMeta } from '../../core/hrm-schema/git.mjs'
-import { getRoster, listShifts, listAvailability } from '../../core/roster/query.mjs'
+import { getRoster, listShifts, listAvailability, listAvailabilityLocks, setAvailabilityLocks } from '../../core/roster/query.mjs'
+import { listTemplates, upsertTemplate, deactivateTemplate } from '../../core/roster/templates.mjs'
 import { validateConstraints, explainConstraints } from '../../core/roster/constraints.mjs'
 import { formatRoster } from '../../core/roster/export.mjs'
 import {
@@ -430,11 +431,24 @@ export const toolDefinitions = [
   },
   {
     name: 'availability_list',
-    description: 'Availability/preference submissions (available | preferred | unavailable, with optional time windows) for a date range.',
+    description: 'Availability/preference submissions (available | preferred | unavailable, with optional time windows) for a date range, including any manager locks (see availability_lock) on those dates.',
     inputSchema: {
       type: 'object',
       properties: { staff: STAFF_REF, from: DATE, to: DATE },
       required: [],
+    },
+  },
+  {
+    name: 'availability_lock',
+    description: 'PRIVILEGED WRITE: lock or unlock a staff member\'s availability for specific dates, independent of the automatic edit cutoff. A locked date blocks that person\'s own self-service edits (they are told to ask their manager) but a roster:write holder can still edit through it. Typical use: freeze a week\'s availability the moment you start building its roster. Pass locked=false to unlock.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        staff: STAFF_REF,
+        dates: { type: 'array', items: DATE, description: 'One or more YYYY-MM-DD dates. Locking a date with no submitted availability is allowed.' },
+        locked: { type: 'boolean', default: true },
+      },
+      required: ['staff', 'dates'],
     },
   },
   {
@@ -593,6 +607,57 @@ export const toolDefinitions = [
         save_mapping_as: { type: 'string', description: 'e.g. "Orchard Google Sheet"' },
       },
       required: ['batch_id'],
+    },
+  },
+  {
+    name: 'shift_template_list',
+    description: 'Named shift blocks ("hour blocks") a store can use as roster_generate coverage — e.g. "Opening 09:30-18:30" or an ad hoc 3-hour holiday block. A store\'s usable blocks are the shared ones (no store) plus its own. Pass include_inactive=true to also see retired ones.',
+    inputSchema: {
+      type: 'object',
+      properties: { store: STORE_REF, include_inactive: { type: 'boolean', default: false } },
+      required: [],
+    },
+  },
+  {
+    name: 'shift_template_create',
+    description: 'PRIVILEGED WRITE: create a new named shift block. Names are free text — not a fixed catalog. Omit store to share it across every store; pass one to scope it there only. Shows up immediately as a column option in roster_generate coverage.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'e.g. "Opening", "Holiday 3h"' },
+        start: { type: 'string', description: 'HH:MM, e.g. 09:30' },
+        end: { type: 'string', description: 'HH:MM, e.g. 18:30. Must be after start — overnight blocks are not supported yet.' },
+        break_minutes: { type: 'number', default: 60 },
+        store: { ...STORE_REF, description: 'Omit to share across every store' },
+        job_code: { type: 'string' },
+      },
+      required: ['name', 'start', 'end'],
+    },
+  },
+  {
+    name: 'shift_template_update',
+    description: 'PRIVILEGED WRITE: update a shift block. Pass only the fields you want to change — omitted fields keep their current value.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'Shift template uuid, from shift_template_list' },
+        name: { type: 'string' },
+        start: { type: 'string', description: 'HH:MM' },
+        end: { type: 'string', description: 'HH:MM' },
+        break_minutes: { type: 'number' },
+        store: { ...STORE_REF, description: 'Pass "" to make it shared across stores' },
+        job_code: { type: 'string' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'shift_template_retire',
+    description: 'PRIVILEGED WRITE: retire a shift block (soft delete — it drops off the roster_generate grid, but past shifts keep their label; never hard-deleted).',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string', description: 'Shift template uuid, from shift_template_list' } },
+      required: ['id'],
     },
   },
   {
@@ -1108,7 +1173,29 @@ export async function handleTool(name, args = {}) {
         const staff = actorIsRankAndFile()
           ? await resolveOwnOr(db(), ws(), a.staff)
           : (a.staff ? await resolveStaff(db(), ws(), a.staff) : null)
-        return jsonResult({ availability: await listAvailability(db(), ws(), { staff_id: staff?.id, from: a.from, to: a.to }) })
+        const range = { staff_id: staff?.id, from: a.from, to: a.to }
+        const [availability, locks] = await Promise.all([
+          listAvailability(db(), ws(), range),
+          listAvailabilityLocks(db(), ws(), range),
+        ])
+        return jsonResult({ availability, locks })
+      }
+
+      case 'availability_lock': {
+        requireScope('roster:write')
+        const staff = await resolveStaff(db(), ws(), a.staff)
+        const dates = Array.isArray(a.dates) ? a.dates : [a.dates].filter(Boolean)
+        const locked = a.locked !== false
+        const locks = await setAvailabilityLocks(db(), ws(), {
+          staffId: staff.id, dates, locked, lockedBy: getMcpActorStaffId(),
+        }, { ...mcpActor() })
+        return jsonResult({
+          staff: { employee_code: staff.employee_code, display_name: staff.display_name },
+          locked, dates, locks,
+          note: locked
+            ? `${staff.display_name}'s availability is locked for ${dates.length} date(s). They cannot edit these themselves until unlocked; a roster:write holder still can.`
+            : `${staff.display_name}'s availability is unlocked for ${dates.length} date(s).`,
+        })
       }
 
       case 'swaps_list': {
@@ -1386,6 +1473,46 @@ export async function handleTool(name, args = {}) {
             after_data: { imported: result.imported }, metadata: { action: 'commit_roster_import' },
           },
           { ...result, next_allowed_actions: ['roster_get', 'roster_export', 'roster_publish'] })
+      }
+
+      case 'shift_template_list': {
+        requireScope('roster:read')
+        const store = a.store ? await resolveStore(db(), ws(), a.store) : null
+        const templates = await listTemplates(db(), ws(), { store_id: store?.id, includeInactive: !!a.include_inactive })
+        return jsonResult({ templates })
+      }
+
+      case 'shift_template_create': {
+        requireScope('roster:write')
+        const template = await upsertTemplate(db(), ws(), {
+          name: a.name, start: a.start, end: a.end, break_minutes: a.break_minutes,
+          store_id: a.store, job_code: a.job_code,
+        }, mcpActor())
+        return jsonResult({ template, note: 'Available immediately as a coverage option in roster_generate.' })
+      }
+
+      case 'shift_template_update': {
+        requireScope('roster:write')
+        if (!a.id) throw new Error('id is required')
+        try {
+          const template = await upsertTemplate(db(), ws(), {
+            id: a.id, name: a.name, start: a.start, end: a.end,
+            break_minutes: a.break_minutes, store_id: a.store, job_code: a.job_code,
+          }, mcpActor())
+          return jsonResult({ template })
+        } catch (err) {
+          throw new Error(/^No shift template/.test(err.message) ? `${err.message} Call shift_template_list for valid ids.` : err.message)
+        }
+      }
+
+      case 'shift_template_retire': {
+        requireScope('roster:write')
+        if (!a.id) throw new Error('id is required')
+        try {
+          return jsonResult(await deactivateTemplate(db(), ws(), a.id, mcpActor()))
+        } catch (err) {
+          throw new Error(/^No shift template/.test(err.message) ? `${err.message} Call shift_template_list for valid ids.` : err.message)
+        }
       }
 
       case 'constraint_set_list': {

@@ -2,6 +2,8 @@
 // Doctrine: staff-facing reads default to the PUBLISHED roster; drafts are
 // only returned when explicitly asked for by a manager surface.
 
+import { recordAudit } from '../audit/record.mjs'
+
 const SHIFT_COLS = 'id, roster_id, store_id, staff_id, work_date, start_at, end_at, break_minutes, job_code, template_id, status, notes'
 
 export function compactShift(row) {
@@ -92,6 +94,58 @@ export async function listAvailabilityLocks(db, workspaceId, { staff_id, from, t
   const { data, error } = await q
   if (error) throw new Error(error.message)
   return data || []
+}
+
+/**
+ * Lock or unlock a staff member's availability for specific dates —
+ * independent of the automatic edit cutoff. Self-audits (LOCK/UNLOCK), so
+ * both the REST route and the MCP tool call this instead of writing
+ * availability_locks directly.
+ *
+ * @param {{ staffId: string, dates: string[], locked: boolean, lockedBy?: string|null }} input
+ * @param {object} actor { workspace_id, actor_kind, actor_id, actor_name, source_type }
+ */
+export async function setAvailabilityLocks(db, workspaceId, { staffId, dates, locked, lockedBy = null }, actor = {}) {
+  if (!staffId) throw new Error('staff_id is required')
+  const uniqueDates = [...new Set(dates || [])]
+  if (!uniqueDates.length) throw new Error('dates[] is required')
+
+  const { data: target } = await db.from('staff').select('id')
+    .eq('workspace_id', workspaceId).eq('id', staffId).maybeSingle()
+  if (!target) throw new Error('Staff not found in this workspace')
+
+  if (locked) {
+    const lockedAt = new Date().toISOString()
+    const rows = uniqueDates.map((workDate) => ({
+      workspace_id: workspaceId, staff_id: staffId, work_date: workDate,
+      locked_by: lockedBy, locked_at: lockedAt,
+    }))
+    const { error } = await db.from('availability_locks').upsert(rows, { onConflict: 'staff_id,work_date' })
+    if (error) throw new Error(error.message)
+  } else {
+    const { error } = await db.from('availability_locks').delete()
+      .eq('workspace_id', workspaceId).eq('staff_id', staffId).in('work_date', uniqueDates)
+    if (error) throw new Error(error.message)
+  }
+
+  await recordAudit(db, {
+    workspace_id: workspaceId,
+    actor_kind: actor.actor_kind || 'user',
+    actor_id: actor.actor_id || null,
+    actor_name: actor.actor_name || null,
+    source_type: actor.source_type || 'web',
+    object_type: 'availability_lock',
+    entity_id: staffId,
+    operation: locked ? 'LOCK' : 'UNLOCK',
+    after_data: { dates: uniqueDates },
+  })
+
+  if (!locked) return []
+  const from = uniqueDates.reduce((a, b) => (a < b ? a : b))
+  const to = uniqueDates.reduce((a, b) => (a > b ? a : b))
+  const wanted = new Set(uniqueDates)
+  const locks = await listAvailabilityLocks(db, workspaceId, { staff_id: staffId, from, to })
+  return locks.filter((r) => wanted.has(r.work_date))
 }
 
 /**

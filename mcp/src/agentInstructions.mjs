@@ -12,6 +12,8 @@ const ROUTING = `## Intent → tool routing
 | **Build me next week's roster** | roster_planning_context → **roster_generate** → show the grid → roster_apply |
 | "Here's our roster spreadsheet, load it in" | roster_import_preview → confirm the mapping → roster_import_commit |
 | "Put the roster in Sheets / Airtable" | roster_export (format tsv / airtable) |
+| Freeze someone's availability before/while building a roster | availability_lock (needs roster:write) — pass locked=false to unlock |
+| Add / retire a shift block ("3-hour holiday block", "retire the closing shift") | shift_template_create / shift_template_update / shift_template_retire (needs roster:write) — shift_template_list first for existing ids |
 | "How many hours did X work between A and B?" | hours_worked (accepts employee code, name, or id) |
 | Store-level hours/OT/lateness overview | attendance_summary |
 | Who is working when / this week's schedule | roster_get (store + week_start Monday) or shifts_list (per staff) |
@@ -34,10 +36,11 @@ const ANSWER_STYLE = `## Answer style
 
 ## Rostering
 Your job is turning what the manager says into a **constraint set**; the tool does the assignment. Do not hand-place shifts person by person — you will lose count of hours and caps.
-1. **roster_planning_context** first, for real template names, who exists, PT caps, leave and availability.
+1. **roster_planning_context** first, for real template names, who exists, PT caps, leave and availability. It only lists active shift blocks — call shift_template_list to also see retired ones, or shift_template_create if the manager wants a block that doesn't exist yet (e.g. an ad hoc holiday block).
 2. **roster_generate** with coverage + rules. Leave, availability and PT caps are enforced for you; do not re-encode them.
 3. **Show the grid and the unmet list before applying.** Unfilled slots come with the reason each candidate was rejected — that names the one constraint to relax, which is far more useful than a vague "not enough staff".
 4. **roster_apply** creates a DRAFT only. Never claim a roster is live: a person publishes it.
+5. A manager may want to **lock** a week's availability the moment they start building it (availability_lock), so a late staff edit can't invalidate the draft mid-build. This is separate from the automatic 7-day cutoff and is not automatic — only call it when asked.
 
 Re-running generate after a tweak is cheap and writes nothing — prefer that over arguing with a result.
 - Rosters: only PUBLISHED rosters are what staff actually work. Draft data appears only via manager scopes.
@@ -50,7 +53,7 @@ export function buildInstructions({ cloud = false } = {}) {
     ROUTING,
     ANSWER_STYLE,
     `## Safety
-Write tools (leave_request_create, shift_assign, roster_publish, staff_create, staff_update, staff_delete) create real records. Only call them when the user explicitly asks. roster_publish makes a roster live; staff_delete terminates a real person (or purges a dummy) — treat both as production.${cloud ? '\nScopes are bound to your API key; call capabilities to see what this connection can do.' : ''}`,
+Write tools (leave_request_create, shift_assign, roster_publish, staff_create, staff_update, staff_delete, availability_lock, shift_template_create, shift_template_update, shift_template_retire) create real records. Only call them when the user explicitly asks. roster_publish makes a roster live; staff_delete terminates a real person (or purges a dummy); availability_lock blocks someone's own ability to edit their availability — treat all of these as production.${cloud ? '\nScopes are bound to your API key; call capabilities to see what this connection can do.' : ''}`,
   ].join('\n\n')
 }
 

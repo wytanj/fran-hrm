@@ -43,7 +43,8 @@ export const TOOL_SCOPE_CATALOG = {
   roster_get: { scope: 'roster:read', action: 'Published roster (shifts by day) for a store + week' },
   roster_history: { scope: 'roster:history', action: 'The change log for a roster: who adjusted which shift, when and why — for disputes' },
   shifts_list: { scope: 'roster:read', action: 'Shifts for a staff member or store in a date range' },
-  availability_list: { scope: 'roster:read', action: 'Staff availability submissions for a date range' },
+  availability_list: { scope: 'roster:read', action: 'Staff availability submissions for a date range, with any manager locks' },
+  availability_lock: { scope: 'roster:write', action: 'Lock or unlock a staff member\'s availability for specific dates', privileged: true },
   swaps_list: { scope: 'roster:read', action: 'Shift swap requests and their status' },
 
   leave_types_list: { scope: 'leave:read', action: 'Configured leave types' },
@@ -63,6 +64,10 @@ export const TOOL_SCOPE_CATALOG = {
   roster_import_commit: { scope: 'roster:write', action: 'Commit a previewed import into draft roster(s)', privileged: true },
   constraint_set_list: { scope: 'roster:read', action: 'Saved reusable rostering constraint sets' },
   constraint_set_save: { scope: 'roster:write', action: 'Save a reusable constraint set', privileged: true },
+  shift_template_list: { scope: 'roster:read', action: 'Named shift blocks a store can use as roster coverage' },
+  shift_template_create: { scope: 'roster:write', action: 'Create a named shift block (hour range)', privileged: true },
+  shift_template_update: { scope: 'roster:write', action: 'Update a shift block', privileged: true },
+  shift_template_retire: { scope: 'roster:write', action: 'Retire a shift block (soft delete)', privileged: true },
 
   // Payroll control plane — CPF/EOR pay settings. Finance/HQ only; writes logged.
   payroll_compute: { scope: 'payroll:process', action: 'Prorate a monthly salary for approved no-pay leave / sabbatical in a period' },
