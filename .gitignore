@@ -15,3 +15,6 @@ dist
 # Real payroll data / generated CPF files — never commit
 docs/*.xlsx
 docs/cpf_ezpay_*.csv
+
+# Local git worktrees for parallel feature work
+.worktrees/

@@ -107,6 +107,74 @@
             <p class="mt-2 text-[11.5px] text-muted">Approved and pending leave is always treated as a hard limit.</p>
           </div>
 
+          <div class="mt-4 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="font-display text-[16px] font-bold text-ink">Team availability</h2>
+              <button type="button" class="press text-[12.5px] font-semibold text-brown" @click="showTeamAvail = !showTeamAvail">
+                {{ showTeamAvail ? 'Hide' : 'Show' }}
+              </button>
+              <span class="ml-auto text-[12px] text-muted">{{ teamLockCount }} date(s) locked this week</span>
+            </div>
+            <p class="mt-1 text-[12.5px] text-muted">
+              Freeze the inputs before you generate so a late edit cannot invalidate the roster. Staff cannot change a locked date; you still can.
+            </p>
+            <template v-if="showTeamAvail">
+              <div class="mt-3 flex flex-wrap items-center gap-2">
+                <button type="button" class="press rounded-md bg-yellow-soft px-2.5 py-1 text-[12px] font-semibold text-brown"
+                  :disabled="!teamStaff.length || lockingWeek" @click="lockWeek(true)">
+                  {{ lockingWeek ? 'Working…' : 'Lock this week' }}
+                </button>
+                <button type="button" class="press rounded-md bg-surface-sunken px-2.5 py-1 text-[12px] font-semibold text-brown"
+                  :disabled="!teamStaff.length || lockingWeek" @click="lockWeek(false)">
+                  Unlock this week
+                </button>
+              </div>
+              <div class="mt-3 overflow-x-auto">
+                <table class="w-full min-w-[640px] text-left text-[12.5px]">
+                  <thead>
+                    <tr class="border-b border-line text-[10.5px] uppercase tracking-[0.5px] text-muted">
+                      <th class="py-2 pr-2">Staff</th>
+                      <th v-for="d in weekDays" :key="d.date" class="px-1 py-2 text-center">
+                        {{ d.label }}
+                        <span class="block font-normal normal-case tabular-nums text-[10px]">{{ d.dayNum }}</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="s in teamStaff" :key="s.id" class="border-b border-line-soft last:border-0">
+                      <td class="py-1.5 pr-2">
+                        <p class="font-semibold leading-tight">{{ s.display_name }}</p>
+                        <p class="text-[10.5px] text-muted">{{ s.employee_code }}</p>
+                      </td>
+                      <td v-for="d in weekDays" :key="d.date" class="px-1 py-1 text-center"
+                        :class="cellLocked(s.id, d.date) ? 'bg-surface-sunken/60' : ''">
+                        <span v-if="cellKind(s.id, d.date)"
+                          class="inline-block rounded-md border px-1.5 py-0.5 text-[11px] font-semibold"
+                          :class="kindClass(cellKind(s.id, d.date))">
+                          {{ kindLabel(cellKind(s.id, d.date)) }}
+                        </span>
+                        <span v-else class="text-[11px] text-muted">—</span>
+                        <UiBadge v-if="cellLocked(s.id, d.date)" tone="warning" class="mt-0.5">locked</UiBadge>
+                        <button type="button"
+                          class="press mt-0.5 block w-full text-[10.5px] font-semibold disabled:opacity-40"
+                          :class="cellLocked(s.id, d.date) ? 'text-warning' : 'text-brown'"
+                          :disabled="lockingKey === `${s.id}|${d.date}`"
+                          @click="toggleLock(s.id, d.date, cellLocked(s.id, d.date))">
+                          {{ lockingKey === `${s.id}|${d.date}` ? '…' : (cellLocked(s.id, d.date) ? 'Unlock' : 'Lock') }}
+                        </button>
+                      </td>
+                    </tr>
+                    <tr v-if="!teamStaff.length">
+                      <td :colspan="8" class="py-4 text-center text-[12.5px] text-muted">
+                        {{ storeId ? 'No active staff at this store.' : 'Pick a store to see the team.' }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </template>
+          </div>
+
           <div class="mt-4 flex flex-wrap items-center gap-3">
             <UiButton :loading="generating" :disabled="!totalSlots" @click="generate">Generate proposal</UiButton>
             <UiButton v-if="proposal" variant="secondary" :loading="applying" @click="apply">
@@ -412,6 +480,103 @@ watch(stores, (list) => { if (!storeId.value && list.length) storeId.value = lis
 
 const { data: templatesRes } = await useFetch<any>('/api/v1/templates', { lazy: true })
 const templates = computed<any[]>(() => templatesRes.value?.data || [])
+
+const availKinds = [
+  { key: 'available', label: 'Can work', active: 'border-success/40 bg-success-soft text-success' },
+  { key: 'preferred', label: 'Prefer', active: 'border-yellow-deep bg-yellow-soft text-brown' },
+  { key: 'unavailable', label: "Can't", active: 'border-danger/40 bg-danger-soft text-danger' },
+]
+const showTeamAvail = ref(true)
+const lockingKey = ref('')
+const lockingWeek = ref(false)
+const weekEnd = computed(() => addDays(weekStart.value, 6))
+const weekDays = computed(() => Array.from({ length: 7 }, (_, i) => {
+  const date = addDays(weekStart.value, i)
+  const d = new Date(`${date}T00:00:00Z`)
+  return {
+    date,
+    label: d.toLocaleDateString('en-SG', { weekday: 'short', timeZone: 'UTC' }),
+    dayNum: String(Number(date.slice(8))),
+  }
+}))
+
+const { data: teamRes } = await useFetch<any>('/api/v1/staff', {
+  query: computed(() => ({
+    store_id: storeId.value || undefined,
+    employment_status: 'active',
+    limit: 100,
+  })),
+  watch: [storeId], lazy: true,
+})
+const teamStaff = computed<any[]>(() =>
+  (teamRes.value?.data || []).filter((s: any) => !storeId.value || s.home_store_id === storeId.value))
+
+const { data: teamAvailRes, refresh: refreshTeamAvail } = await useFetch<any>('/api/v1/availability', {
+  query: computed(() => ({ from: weekStart.value, to: weekEnd.value })),
+  watch: [weekStart], lazy: true,
+})
+const teamAvailByKey = computed(() => {
+  const map = new Map<string, any>()
+  for (const row of teamAvailRes.value?.data || []) {
+    map.set(`${row.staff_id}|${row.work_date}`, row)
+  }
+  return map
+})
+const teamLocksByKey = computed(() => {
+  const map = new Map<string, any>()
+  for (const row of teamAvailRes.value?.locks || []) {
+    map.set(`${row.staff_id}|${row.work_date}`, row)
+  }
+  return map
+})
+const teamLockCount = computed(() => {
+  const ids = new Set(teamStaff.value.map((s: any) => s.id))
+  return [...teamLocksByKey.value.keys()].filter((k) => ids.has(k.split('|')[0])).length
+})
+function cellKind(staffId: string, date: string) {
+  return teamAvailByKey.value.get(`${staffId}|${date}`)?.kind || ''
+}
+function cellLocked(staffId: string, date: string) {
+  return teamLocksByKey.value.has(`${staffId}|${date}`)
+}
+function kindLabel(kind: string) {
+  return availKinds.find((k) => k.key === kind)?.label || kind
+}
+function kindClass(kind: string) {
+  return availKinds.find((k) => k.key === kind)?.active || 'border-line bg-white text-muted'
+}
+async function toggleLock(staffId: string, date: string, currentlyLocked: boolean) {
+  lockingKey.value = `${staffId}|${date}`
+  error.value = ''
+  try {
+    await $fetch('/api/v1/availability/lock', {
+      method: 'POST',
+      body: { staff_id: staffId, dates: [date], locked: !currentlyLocked },
+    })
+    await refreshTeamAvail()
+  } catch (err: any) {
+    error.value = err?.data?.message || err?.data?.statusMessage || 'Could not update the lock'
+  } finally {
+    lockingKey.value = ''
+  }
+}
+async function lockWeek(locked: boolean) {
+  lockingWeek.value = true
+  error.value = ''
+  const dates = weekDays.value.map((d) => d.date)
+  try {
+    await Promise.all(teamStaff.value.map((s: any) =>
+      $fetch('/api/v1/availability/lock', {
+        method: 'POST',
+        body: { staff_id: s.id, dates, locked },
+      })))
+    await refreshTeamAvail()
+  } catch (err: any) {
+    error.value = err?.data?.message || err?.data?.statusMessage || 'Could not update the locks'
+  } finally {
+    lockingWeek.value = false
+  }
+}
 
 const { data: setsRes, refresh: refreshSets } = await useFetch<any>('/api/v1/constraint-sets', { lazy: true })
 const constraintSets = computed<any[]>(() => setsRes.value?.data || [])

@@ -78,6 +78,22 @@ export async function listAvailability(db, workspaceId, { staff_id, from, to }) 
   return data || []
 }
 
+/** Manager-set locks on (staff_id, work_date). Independent of the cutoff. */
+export async function listAvailabilityLocks(db, workspaceId, { staff_id, from, to } = {}) {
+  let q = db
+    .from('availability_locks')
+    .select('staff_id, work_date, locked_at, locked_by:locked_by(employee_code, display_name)')
+    .eq('workspace_id', workspaceId)
+    .order('work_date')
+    .limit(500)
+  if (staff_id) q = q.eq('staff_id', staff_id)
+  if (from) q = q.gte('work_date', from)
+  if (to) q = q.lte('work_date', to)
+  const { data, error } = await q
+  if (error) throw new Error(error.message)
+  return data || []
+}
+
 /**
  * Guardrail checks run before publishing (and surfaced while drafting):
  * leave clashes, PT weekly-cap breaches, weekly OT projections, and FT staff

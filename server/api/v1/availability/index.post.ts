@@ -1,10 +1,12 @@
 import { recordAudit } from '../../../../core/audit/record.mjs'
+import { listAvailabilityLocks } from '../../../../core/roster/query.mjs'
 import { assertDate, sgToday, addDays } from '../../../utils/dates'
 
 // Staff submit availability/preferences for future dates. Replaces existing
 // entries per submitted date. A cutoff (availability_cutoff_days, default 7)
 // stops staff editing days that are too close for the SM to re-plan;
-// supervisors and above may override.
+// supervisors and above may override. A manager lock is a second, explicit
+// freeze (see availability_locks) and is also bypassed by roster:write.
 export default defineEventHandler(async (event) => {
   const ctx = await requireActor(event, { scope: 'roster:read' })
   const body = await readBody(event)
@@ -43,6 +45,18 @@ export default defineEventHandler(async (event) => {
       note: e.note || null,
     }
   })
+
+  if (!isManager && dates.length) {
+    const from = dates.reduce((a, b) => (a < b ? a : b))
+    const to = dates.reduce((a, b) => (a > b ? a : b))
+    const lockRows = await listAvailabilityLocks(db, ctx.workspaceId, { staff_id: staffId, from, to })
+    const lockedDates = new Set(lockRows.map((r: any) => r.work_date))
+    for (const workDate of dates) {
+      if (lockedDates.has(workDate)) {
+        throw apiError(422, `Availability for ${workDate} is locked while the roster is being built. Ask your manager to unlock it if you need to change it.`)
+      }
+    }
+  }
 
   await db.from('availability').delete().eq('staff_id', staffId).in('work_date', dates)
   const { data, error } = await db.from('availability').insert(rows).select()
