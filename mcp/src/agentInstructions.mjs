@@ -20,7 +20,7 @@ const ROUTING = `## Intent → tool routing
 | Late/no-show/OT incidents | attendance_flags_list |
 | Raw clock records | time_entries_list |
 | Staff lookup / directory | staff_search, staff_get |
-| Create / update / terminate a person | staff_create, staff_update, staff_delete (needs staff:write) |
+| Create / update / terminate a person | staff_create, staff_update, staff_delete (needs staff:write; a dummy/simulated person only needs staff:dummy) |
 | Add a custom staff field | staff_field_upsert, then staff_update with custom.{key} |
 | What is the in-force people / HR schema? | **hrm_schema_get** — never invent the staff field list or citizenship values |
 | Leave balances / requests | leave_balance_get, leave_requests_list |

@@ -1,0 +1,6 @@
+# Migrations are sha256-checksummed against the exact file bytes
+# (scripts/migrate.mjs). On Windows with core.autocrlf=true, a normal
+# checkout silently rewrites LF to CRLF and breaks that checksum the moment
+# the file is re-read — as happened to 026_availability_locks.sql. Pin these
+# to LF regardless of local autocrlf so this can't recur.
+core/db/*.sql text eol=lf

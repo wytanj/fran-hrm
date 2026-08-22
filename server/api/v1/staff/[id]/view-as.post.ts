@@ -5,7 +5,7 @@ import { recordAudit } from '../../../../../core/audit/record.mjs'
 // their roster, availability, etc. Never permitted for a real staff member;
 // that would be impersonation, not a preview.
 export default defineEventHandler(async (event) => {
-  const ctx = await requireActor(event, { scope: 'staff:write' })
+  const ctx = await requireActor(event, { scope: 'staff:dummy' })
   if (ctx.kind !== 'session') throw apiError(400, 'Sign in as a person to use View as.')
 
   const id = getRouterParam(event, 'id')

@@ -29,7 +29,7 @@ export interface ActorContext {
   has: (scope: string) => boolean
 }
 
-function denied(scope: string, ctx: { scopes: string[]; role: string | null; kind: string; name: string }) {
+export function denied(scope: string, ctx: { scopes: string[]; role: string | null; kind: string; name: string }) {
   const meta = scopeMeta(scope)
   const what = meta ? `"${meta.label}" (${scope})` : `"${scope}"`
   if (ctx.kind === 'api_key') {

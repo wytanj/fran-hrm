@@ -1,6 +1,12 @@
 // Central tool → scope catalog. tools/list and tools/call filter on this
 // AND each handler calls requireScope() itself — double gate, so a tool can
 // never run on scope the connection doesn't hold.
+//
+// `scope` is usually a single string. A few tools cover more than one real
+// action gated by different scopes (e.g. staff_create: a real hire needs
+// staff:write, a dummy needs staff:dummy) — for those, `scope` is an array
+// and holding ANY one of them is enough to see the tool listed at all; the
+// handler itself still enforces the exact scope for the specific call.
 
 export const TOOL_SCOPE_CATALOG = {
   capabilities: { scope: null, action: 'List the tools this connection may call' },
@@ -15,9 +21,9 @@ export const TOOL_SCOPE_CATALOG = {
   zones_list: { scope: 'zones:read', action: 'The mapped zones of a store floor (name, colour, position) — for scheduling & analytics' },
   staff_search: { scope: 'staff:read', action: 'Search the staff directory (name, code, role, store, FT/PT)' },
   staff_get: { scope: 'staff:read', action: 'One staff member — titles, departments, hierarchy, and (if permitted) pay / PII' },
-  staff_create: { scope: 'staff:write', action: 'Create a staff record (hire or dummy)', privileged: true },
-  staff_update: { scope: 'staff:write', action: 'Update a staff profile, departments, reporting line or custom fields', privileged: true },
-  staff_delete: { scope: 'staff:write', action: 'Terminate a real staff member, or purge a dummy', privileged: true },
+  staff_create: { scope: ['staff:write', 'staff:dummy'], action: 'Create a staff record (hire needs staff:write; dummy needs staff:dummy)', privileged: true },
+  staff_update: { scope: ['staff:write', 'staff:dummy'], action: 'Update a staff profile (real person needs staff:write; dummy needs staff:dummy)', privileged: true },
+  staff_delete: { scope: ['staff:write', 'staff:dummy'], action: 'Terminate a real staff member (staff:write) or purge a dummy (staff:dummy)', privileged: true },
   staff_fields_list: { scope: 'staff:read', action: 'The staff profile field catalog (built-in + workspace custom fields)' },
   staff_field_upsert: { scope: 'staff:write', action: 'Create or update a workspace custom staff field', privileged: true },
   staff_field_delete: { scope: 'staff:write', action: 'Delete a workspace custom staff field and its values', privileged: true },
@@ -81,7 +87,8 @@ export function isToolPermitted(toolName, opts = {}) {
   if (!meta) return opts.scopes == null // unknown tool: unrestricted only
   if (meta.scope == null) return true
   if (opts.scopes == null) return true
-  return opts.scopes.includes(meta.scope)
+  const required = Array.isArray(meta.scope) ? meta.scope : [meta.scope]
+  return required.some((s) => opts.scopes.includes(s))
 }
 
 export function resolvePermittedTools(scopes) {

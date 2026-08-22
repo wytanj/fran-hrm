@@ -10,6 +10,7 @@
 export const SCOPES = [
   { scope: 'staff:read', group: 'People', label: 'View the staff directory', detail: 'Names, codes, roles, titles, departments, reporting lines. Needed to pick a teammate for a swap. Open Team → a name for the profile.' },
   { scope: 'staff:write', group: 'People', label: 'Create and edit staff records', detail: 'Add hires, edit the full profile (pay, address, citizenship, custom fields), set PINs, terminate. Sensitive.' },
+  { scope: 'staff:dummy', group: 'People', label: 'Create and manage dummy staff', detail: 'Create, edit, purge and "View as" simulated (dummy) staff — for modelling a prospective hire or seeding test data. Never touches a real person\'s record; separate from staff:write on purpose so a store manager can do this without full staff-editing rights.' },
   { scope: 'org:read', group: 'People', label: 'View org chart and accountabilities', detail: 'Seats, titles, reporting lines, the accountability register.' },
   { scope: 'org:write', group: 'People', label: 'Edit accountabilities and seats', detail: 'Create seats, move reporting lines, assign accountability owners, record check-ins.' },
 
@@ -67,8 +68,8 @@ export const DEFAULT_ROLE_MATRIX = {
   // identity check. See core/db/010_permissions_split_self_service.sql.
   staff: ['staff:read', 'org:read', 'roster:read', 'attendance:read', 'leave:read', 'leave:write', 'reports:read'],
   supervisor: ['staff:read', 'org:read', 'roster:read', 'roster:write', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'reports:read', 'zones:read'],
-  store_manager: ['staff:read', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read', 'zones:read', 'zones:write'],
-  area_manager: ['staff:read', 'staff:write', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read', 'reports:cost', 'payroll:lock', 'zones:read', 'zones:write'],
+  store_manager: ['staff:read', 'staff:dummy', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read', 'zones:read', 'zones:write'],
+  area_manager: ['staff:read', 'staff:write', 'staff:dummy', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read', 'reports:cost', 'payroll:lock', 'zones:read', 'zones:write'],
   // Finance: sees everything relevant to pay, locks payroll, and owns the
   // financial processing (CPF/pay settings + EOR runs). Edits no rosters/staff
   // and approves no leave.

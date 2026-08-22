@@ -250,8 +250,8 @@
       </div>
     </div>
 
-    <!-- Simulated staff: model a prospective hire or seed test data (area manager+) -->
-    <div v-if="isAreaManager" class="mt-6 rounded-lg border border-dashed border-brown/30 bg-peach-soft/40 p-4">
+    <!-- Simulated staff: model a prospective hire or seed test data (staff:dummy — store manager+) -->
+    <div v-if="canManageDummies" class="mt-6 rounded-lg border border-dashed border-brown/30 bg-peach-soft/40 p-4">
       <div class="flex flex-wrap items-center gap-2">
         <h3 class="font-display text-[15px] font-bold text-ink">Simulated staff</h3>
         <UiDummyTag :show="true" />
@@ -324,7 +324,7 @@
 <script setup lang="ts">
 definePageMeta({ middleware: ['supervisor-only'] })
 
-const { isAreaManager, viewAs } = useSession()
+const { isAreaManager, canManageDummies, viewAs } = useSession()
 
 const { data: fieldsRes, refresh: refreshFields } = await useFetch<any>('/api/v1/staff/profile-fields', { lazy: true })
 const fieldCatalog = computed<any>(() => fieldsRes.value || {})

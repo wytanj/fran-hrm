@@ -3,7 +3,7 @@ import { recordAudit } from '../../../../core/audit/record.mjs'
 // Remove ALL dummy (test) staff at once — the reset button after an E2E run.
 // Scoped strictly to is_dummy, so real staff are never touched.
 export default defineEventHandler(async (event) => {
-  const ctx = await requireActor(event, { scope: 'staff:write' })
+  const ctx = await requireActor(event, { scope: 'staff:dummy' })
   const db = getAdminClient()
 
   const { data: dummies } = await db

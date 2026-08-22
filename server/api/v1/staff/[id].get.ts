@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   return {
     data: {
       ...profile,
-      can_edit: ctx.has('staff:write'),
+      can_edit: ctx.has(profile.is_dummy ? 'staff:dummy' : 'staff:write'),
       can_see_sensitive: includeSensitive,
     },
   }

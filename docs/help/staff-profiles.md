@@ -49,18 +49,19 @@ A permission answers **what kind** of data, never whose. Seeing a colleague's pr
 | **View the staff directory** (`staff:read`) | Yes | No |
 | **See pay rates and manpower cost** (`reports:cost`) | Yes | Yes |
 | **Create and edit staff records** (`staff:write`) | Yes, and they can edit | Yes, and they can edit |
+| **Create and manage dummy staff** (`staff:dummy`) | Only for simulated (dummy) staff | Only for simulated (dummy) staff |
 
-Finance has the cost permission so they can see pay and statutory identity for CPF without being able to rewrite the record. Area managers and HQ have both.
+Finance has the cost permission so they can see pay and statutory identity for CPF without being able to rewrite the record. Area managers and HQ have both. `staff:dummy` is deliberately lighter and separate: store managers and area managers hold it by default, so a store manager can model a prospective hire without gaining the ability to edit anyone's real record. A dummy can never be given a role senior to the person creating it — that would otherwise be a way to "View as" your way to elevated access.
 
 ## Editing and offboarding
 
-**Edit** on the profile (needs **Create and edit staff records**) writes the same fields the API and Claude use. Money is dollars on the screen and **integer cents** underneath.
+**Edit** on the profile (needs **Create and edit staff records**, or **Create and manage dummy staff** for a simulated one) writes the same fields the API and Claude use. Money is dollars on the screen and **integer cents** underneath.
 
 - **Terminate** marks a real person terminated. Timesheets and the audit trail stay. They cannot sign in. POS access is revoked and is not restored if they are later reactivated.
 - **Delete dummy** hard-deletes a simulated person. Real staff cannot be purged.
-- **View as** (Team → Simulated staff, dummy rows only) temporarily switches your own session to that dummy — useful for checking what a prospective hire's roster or availability screen would actually look like once they're scheduled. A banner stays on every page while you're in it; **Exit view** restores your own session instantly. This only ever works on dummy staff — there is no way to view as a real person.
+- **View as** (Team → Simulated staff, dummy rows only) temporarily switches your own session to that dummy — useful for checking what a prospective hire's roster or availability screen would actually look like once they're scheduled. A banner stays on every page while you're in it; **Exit view** restores your own session instantly. This only ever works on dummy staff — there is no way to view as a real person. Needs `staff:dummy` (store manager and above by default).
 
-Claude uses the same rules: `staff_create`, `staff_update`, `staff_delete` (terminate or purge-dummy) need `staff:write`. `staff_get` returns the full profile, with pay and PII omitted when the connection lacks the cost or write permission.
+Claude uses the same rules: `staff_create`, `staff_update`, `staff_delete` need `staff:write` for a real person, or the lighter `staff:dummy` for a simulated one. `staff_get` returns the full profile, with pay and PII omitted when the connection lacks the cost or write permission.
 
 ## Extending the record
 

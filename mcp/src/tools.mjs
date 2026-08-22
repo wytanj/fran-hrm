@@ -40,6 +40,13 @@ import { getPayrollSettings, updatePayrollSettings, payrollSettingsHistory } fro
 import { computeMonthlyProration } from '../../core/payroll/compute.mjs'
 import { listZones } from '../../core/zones/query.mjs'
 
+// Mirrors server/utils/scopes.ts ROLE_LEVEL — mcp/src runs standalone
+// (node mcp/src/index.mjs) so it can't import that .ts file directly.
+const ROLE_LEVEL = { staff: 1, supervisor: 2, store_manager: 3, area_manager: 4, finance: 4, hq_admin: 5 }
+function roleAtLeast(role, min) {
+  return (ROLE_LEVEL[role] || 0) >= (ROLE_LEVEL[min] || 99)
+}
+
 const DATE = { type: 'string', description: 'YYYY-MM-DD' }
 const STAFF_REF = { type: 'string', description: 'Staff reference: uuid, employee code (e.g. PT001), or a unique name fragment' }
 const STORE_REF = { type: 'string', description: 'Store reference: uuid or store code (e.g. FRAN01)' }
@@ -979,8 +986,17 @@ export async function handleTool(name, args = {}) {
       }
 
       case 'staff_create': {
-        requireScope('staff:write')
+        // Dummy staff get their own, lighter scope — a store manager can
+        // model a prospective hire without full "create real staff" rights.
+        requireScope(a.is_dummy ? 'staff:dummy' : 'staff:write')
         if (!a.display_name) throw new Error('display_name is required')
+        // staff:dummy alone must not be a privilege-escalation path — a
+        // dummy could otherwise be role:hq_admin and impersonated for real
+        // elevated scopes. Cap the assignable role at the actor's own.
+        const scopes = getMcpScopes()
+        if (scopes && !scopes.includes('staff:write') && a.role && !roleAtLeast(getMcpActorRole(), a.role)) {
+          throw new Error(`A dummy cannot be given a role senior to your own (${getMcpActorRole()}).`)
+        }
         if (a.pin) {
           if (!/^\d{4,12}$/.test(String(a.pin))) throw new Error('PIN must be 4-12 digits')
           a.pin_hash = bcrypt.hashSync(String(a.pin), 10)
@@ -992,20 +1008,26 @@ export async function handleTool(name, args = {}) {
       }
 
       case 'staff_update': {
-        requireScope('staff:write')
         if (!a.staff) throw new Error('staff is required')
+        const target = await resolveStaff(db(), ws(), a.staff)
+        requireScope(target.is_dummy ? 'staff:dummy' : 'staff:write')
+        const scopes = getMcpScopes()
+        if (scopes && !scopes.includes('staff:write') && a.role && !roleAtLeast(getMcpActorRole(), a.role)) {
+          throw new Error(`A dummy cannot be given a role senior to your own (${getMcpActorRole()}).`)
+        }
         if (a.pin) {
           if (!/^\d{4,12}$/.test(String(a.pin))) throw new Error('PIN must be 4-12 digits')
           a.pin_hash = bcrypt.hashSync(String(a.pin), 10)
         }
-        const updated = await updateStaffRecord(db(), ws(), a.staff, a, mcpActor())
+        const updated = await updateStaffRecord(db(), ws(), target.id, a, mcpActor())
         return jsonResult({ staff: updated })
       }
 
       case 'staff_delete': {
-        requireScope('staff:write')
         if (!a.staff) throw new Error('staff is required')
-        const result = await deleteStaffRecord(db(), ws(), a.staff, { mode: a.mode || 'auto', actor: mcpActor() })
+        const target = await resolveStaff(db(), ws(), a.staff)
+        requireScope(target.is_dummy ? 'staff:dummy' : 'staff:write')
+        const result = await deleteStaffRecord(db(), ws(), target.id, { mode: a.mode || 'auto', actor: mcpActor() })
         return jsonResult(result)
       }
 

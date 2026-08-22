@@ -1,14 +1,24 @@
 import { deleteStaffRecord } from '../../../../core/staff/profile.mjs'
 
-// Dummy staff: hard-delete. Real staff: refuse unless ?mode=terminate
-// (or body.mode), which soft-terminates so timesheets and audit survive.
+// Dummy staff: hard-delete (needs staff:dummy). Real staff: refuse unless
+// ?mode=terminate (or body.mode), which soft-terminates so timesheets and
+// audit survive (needs staff:write).
 export default defineEventHandler(async (event) => {
-  const ctx = await requireActor(event, { scope: 'staff:write' })
+  const ctx = await requireActor(event)
+  const id = getRouterParam(event, 'id')
+  const db = getAdminClient()
+  const { data: target } = await db.from('staff').select('id, is_dummy')
+    .eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle()
+  if (!target) throw apiError(404, 'Staff not found')
+
+  const needed = target.is_dummy ? 'staff:dummy' : 'staff:write'
+  if (!ctx.has(needed)) throw denied(needed, { scopes: ctx.scopes, role: ctx.role, kind: ctx.kind, name: ctx.actorName })
+
   const q = getQuery(event)
   const body = await readBody(event).catch(() => ({})) || {}
   const mode = String(body.mode || q.mode || 'legacy')
   try {
-    return await deleteStaffRecord(getAdminClient(), ctx.workspaceId, getRouterParam(event, 'id'), {
+    return await deleteStaffRecord(db, ctx.workspaceId, id, {
       mode,
       actor: {
         workspace_id: ctx.workspaceId,
