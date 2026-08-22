@@ -5,7 +5,7 @@ summary: Open anyone from Team to see departments, titles, reporting line, salar
 category: people
 primary_path: /team
 related_paths: [/org, /permissions, /hrm-schema]
-intent_tags: [staff profile, view staff, employee record, department, salary, race, address, citizenship, PR, foreigner, singaporean, NRIC, who reports to, direct reports, terminate staff, custom field, add field]
+intent_tags: [staff profile, view staff, employee record, department, salary, race, address, citizenship, PR, foreigner, singaporean, NRIC, who reports to, direct reports, terminate staff, custom field, add field, dummy staff, simulated staff, view as, preview roster, hiring simulation]
 audience: [supervisor, store_manager, area_manager, finance, hq_admin]
 sort_order: 50
 ---
@@ -58,6 +58,7 @@ Finance has the cost permission so they can see pay and statutory identity for C
 
 - **Terminate** marks a real person terminated. Timesheets and the audit trail stay. They cannot sign in. POS access is revoked and is not restored if they are later reactivated.
 - **Delete dummy** hard-deletes a simulated person. Real staff cannot be purged.
+- **View as** (Team → Simulated staff, dummy rows only) temporarily switches your own session to that dummy — useful for checking what a prospective hire's roster or availability screen would actually look like once they're scheduled. A banner stays on every page while you're in it; **Exit view** restores your own session instantly. This only ever works on dummy staff — there is no way to view as a real person.
 
 Claude uses the same rules: `staff_create`, `staff_update`, `staff_delete` (terminate or purge-dummy) need `staff:write`. `staff_get` returns the full profile, with pay and PII omitted when the connection lacks the cost or write permission.
 

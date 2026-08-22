@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs'
 import { getAdminClient } from './supabase'
 
 const COOKIE = 'fran_hrm_session'
+const VIEW_AS_COOKIE = 'fran_hrm_view_as_return'
 const SESSION_DAYS = 14
 
 function hashToken(raw: string): string {
@@ -105,11 +106,51 @@ export async function getSessionStaff(event: any) {
   return staff
 }
 
+/**
+ * "View as [dummy]": stash the caller's own session cookie in a second
+ * cookie, then swap the primary cookie to a fresh session for the target.
+ * The original session is left alive in staff_sessions — this only swaps
+ * which cookie is active in this browser, so exiting is a plain restore,
+ * never a re-login. Never call this for a real staff member.
+ */
+export async function startViewAs(event: any, target: { id: string; workspace_id: string }) {
+  const currentRaw = getCookie(event, COOKIE)
+  if (!currentRaw) throw apiError(401, 'Sign in required')
+  if (getCookie(event, VIEW_AS_COOKIE)) throw apiError(400, 'Already viewing as someone else — exit that view first.')
+  const expires = new Date(Date.now() + SESSION_DAYS * 86400000)
+  setCookie(event, VIEW_AS_COOKIE, currentRaw, {
+    httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', expires,
+  })
+  await issueStaffSession(event, target)
+}
+
+export function isViewingAs(event: any): boolean {
+  return !!getCookie(event, VIEW_AS_COOKIE)
+}
+
+/** Restore the stashed session cookie and drop the stash. */
+export async function endViewAs(event: any) {
+  const returnRaw = getCookie(event, VIEW_AS_COOKIE)
+  if (!returnRaw) throw apiError(400, 'Not currently viewing as anyone')
+  const expires = new Date(Date.now() + SESSION_DAYS * 86400000)
+  setCookie(event, COOKIE, returnRaw, {
+    httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', expires,
+  })
+  deleteCookie(event, VIEW_AS_COOKIE, { path: '/' })
+}
+
 export async function logoutStaff(event: any) {
+  const db = getAdminClient()
   const raw = getCookie(event, COOKIE)
   if (raw) {
-    const db = getAdminClient()
     await db.from('staff_sessions').update({ ended_at: new Date().toISOString() }).eq('token_hash', hashToken(raw))
   }
   deleteCookie(event, COOKIE, { path: '/' })
+  // Logging out mid "view as" should not leave the stashed manager session
+  // dangling — end that one too.
+  const returnRaw = getCookie(event, VIEW_AS_COOKIE)
+  if (returnRaw) {
+    await db.from('staff_sessions').update({ ended_at: new Date().toISOString() }).eq('token_hash', hashToken(returnRaw))
+    deleteCookie(event, VIEW_AS_COOKIE, { path: '/' })
+  }
 }

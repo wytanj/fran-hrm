@@ -308,7 +308,10 @@
             <span class="font-semibold text-ink">{{ m.display_name }}</span>
             <span class="font-mono text-[11px] text-muted">{{ m.employee_code }}</span>
             <span class="text-[11px] text-muted">{{ roleLabel(m.role) }}</span>
-            <button class="press ml-auto text-[12px] font-semibold text-danger" :disabled="busy" @click="removeDummy(m)">Remove</button>
+            <button class="press ml-auto text-[12px] font-semibold text-brown" :disabled="busy || viewingAsBusy" @click="viewAsDummy(m)">
+              {{ viewingAsBusy === m.id ? 'Switching…' : 'View as' }}
+            </button>
+            <button class="press text-[12px] font-semibold text-danger" :disabled="busy" @click="removeDummy(m)">Remove</button>
           </div>
         </div>
         <p v-else class="mt-2 text-[12px] text-muted">No dummy staff yet.</p>
@@ -321,7 +324,7 @@
 <script setup lang="ts">
 definePageMeta({ middleware: ['supervisor-only'] })
 
-const { isAreaManager } = useSession()
+const { isAreaManager, viewAs } = useSession()
 
 const { data: fieldsRes, refresh: refreshFields } = await useFetch<any>('/api/v1/staff/profile-fields', { lazy: true })
 const fieldCatalog = computed<any>(() => fieldsRes.value || {})
@@ -472,6 +475,19 @@ async function createDummy() {
     testMsg.value = `Created ${r.data?.display_name} (${r.data?.employee_code}) · PIN 123456`
     await refresh()
   } catch (err: any) { testErr.value = true; testMsg.value = err?.data?.message || err?.data?.statusMessage || 'Failed' } finally { creating.value = false }
+}
+
+const viewingAsBusy = ref('')
+async function viewAsDummy(m: any) {
+  viewingAsBusy.value = m.id
+  testMsg.value = ''; testErr.value = false
+  try {
+    await viewAs(m.id)
+  } catch (err: any) {
+    testErr.value = true
+    testMsg.value = err?.data?.message || err?.data?.statusMessage || 'Could not switch'
+    viewingAsBusy.value = ''
+  }
 }
 
 async function removeDummy(m: any) {

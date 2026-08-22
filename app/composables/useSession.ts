@@ -13,23 +13,40 @@ export interface SessionStaff {
   employment_type: string
   home_store_id?: string
   home_store?: { id: string; code: string; name: string } | null
+  is_dummy?: boolean
 }
 
 export function useSession() {
   const staff = useState<SessionStaff | null>('session-staff', () => null)
   const ready = useState<boolean>('session-ready', () => false)
+  const viewingAs = useState<boolean>('session-viewing-as', () => false)
 
   async function refresh() {
     try {
       // useRequestFetch forwards the incoming request's cookies during SSR.
       // Plain $fetch does not, so the session check would fail server-side and
       // bounce an authenticated user to /login on every hard navigation.
-      const res = await useRequestFetch()<{ ok: boolean; staff: SessionStaff | null }>('/api/auth/me')
+      const res = await useRequestFetch()<{ ok: boolean; staff: SessionStaff | null; viewing_as?: boolean }>('/api/auth/me')
       staff.value = res.staff
+      viewingAs.value = !!res.viewing_as
     } catch {
       staff.value = null
+      viewingAs.value = false
     }
     ready.value = true
+  }
+
+  /** Swap the session to a dummy staff member, then hard-reload so every
+   * page re-fetches under the new identity (SSR data already resolved under
+   * the old one would otherwise go stale). */
+  async function viewAs(staffId: string) {
+    await $fetch(`/api/v1/staff/${staffId}/view-as`, { method: 'POST' })
+    window.location.assign('/')
+  }
+
+  async function exitViewAs() {
+    await $fetch('/api/v1/view-as/exit', { method: 'POST' })
+    window.location.assign('/team')
   }
 
   async function login(identifier: string, pin: string) {
@@ -56,5 +73,8 @@ export function useSession() {
   // area_manager is senior but does not do financial processing).
   const isFinanceOrHq = computed(() => ['finance', 'hq_admin'].includes(staff.value?.role || ''))
 
-  return { staff, ready, refresh, login, logout, isManager, isSupervisor, isAreaManager, isHqAdmin, isFinanceOrHq }
+  return {
+    staff, ready, refresh, login, logout, isManager, isSupervisor, isAreaManager, isHqAdmin, isFinanceOrHq,
+    viewingAs, viewAs, exitViewAs,
+  }
 }

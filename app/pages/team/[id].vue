@@ -177,6 +177,7 @@
           <div v-if="canEdit && !editing" class="flex flex-wrap gap-2">
             <UiButton v-if="staff.employment_status !== 'terminated' && !staff.is_dummy" size="sm" variant="secondary"
               :loading="acting" @click="terminate">Terminate</UiButton>
+            <UiButton v-if="staff.is_dummy" size="sm" variant="secondary" :loading="viewingAsBusy" @click="viewAsThisDummy">View as</UiButton>
             <UiButton v-if="staff.is_dummy" size="sm" variant="danger" :loading="acting" @click="purge">Delete dummy</UiButton>
           </div>
         </div>
@@ -247,6 +248,18 @@ const headerSubtitle = computed(() => {
 const editing = ref(false)
 const saving = ref(false)
 const acting = ref(false)
+const { viewAs } = useSession()
+const viewingAsBusy = ref(false)
+async function viewAsThisDummy() {
+  viewingAsBusy.value = true
+  try {
+    await viewAs(id.value)
+  } catch (err: any) {
+    saveErr.value = true
+    saveMsg.value = err?.data?.message || err?.data?.statusMessage || 'Could not switch'
+    viewingAsBusy.value = false
+  }
+}
 const saveMsg = ref('')
 const saveErr = ref(false)
 const form = reactive<{ values: Record<string, any>; deptKeys: string[]; primaryDept: string; pin: string }>({
