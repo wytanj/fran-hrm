@@ -1,6 +1,9 @@
 // Pending invites for this workspace (admin view).
 export default defineEventHandler(async (event) => {
-  const ctx = await requireActor(event, { scope: 'staff:write' })
+  const ctx = await requireActor(event)
+  if (!ctx.has('staff:write') && !ctx.has('staff:invite')) {
+    throw denied('staff:invite', { scopes: ctx.scopes, role: ctx.role, kind: ctx.kind, name: ctx.actorName })
+  }
   const db = getAdminClient()
   const { data, error } = await db.from('workspace_invites')
     .select('id, email, role, token, expires_at, created_at, inviter:invited_by(display_name)')

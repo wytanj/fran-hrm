@@ -211,11 +211,12 @@
       </div>
     </div>
 
-    <!-- Invite a teammate (Google SSO) — area manager+ -->
-    <div v-if="isAreaManager" class="mt-6 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
+    <!-- Invite a teammate (Google SSO) — staff:invite (store manager+) -->
+    <div v-if="canInvite" class="mt-6 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
       <h3 class="font-display text-[15px] font-bold text-ink">Invite a teammate</h3>
       <p class="mt-1 text-[12px] text-muted">
         They join this workspace when they sign in with Google using this email — no link needed. For managers, finance and admins; floor staff use a PIN.
+        You cannot invite someone at a role senior to your own.
       </p>
       <div class="mt-3 flex flex-wrap items-end gap-2.5">
         <label class="block">
@@ -324,7 +325,7 @@
 <script setup lang="ts">
 definePageMeta({ middleware: ['supervisor-only'] })
 
-const { isAreaManager, canManageDummies, viewAs } = useSession()
+const { isAreaManager, canManageDummies, canInvite, viewAs } = useSession()
 
 const { data: fieldsRes, refresh: refreshFields } = await useFetch<any>('/api/v1/staff/profile-fields', { lazy: true })
 const fieldCatalog = computed<any>(() => fieldsRes.value || {})
@@ -419,9 +420,9 @@ async function createStaff() {
   } catch (err: any) { staffErr.value = true; staffMsg.value = err?.data?.message || err?.data?.statusMessage || 'Failed' } finally { addingStaff.value = false }
 }
 
-// Invites (area manager+ only — the fetch is gated so supervisors don't 403)
+// Invites (staff:invite — store manager+; the fetch is gated so supervisors don't 403)
 const { data: invitesRes, refresh: refreshInvites } = await useFetch<any>('/api/v1/workspace-invites', {
-  lazy: true, default: () => ({ data: [] }), immediate: computed(() => isAreaManager.value) as any,
+  lazy: true, default: () => ({ data: [] }), immediate: computed(() => canInvite.value) as any,
 })
 const invites = computed<any[]>(() => invitesRes.value?.data || [])
 const invite = reactive({ email: '', role: 'staff' })

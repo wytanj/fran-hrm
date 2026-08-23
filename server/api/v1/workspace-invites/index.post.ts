@@ -1,13 +1,19 @@
 // Invite someone to JOIN this workspace with a role. No email is sent and no
 // link is needed: the invitee signs in with Google using this email and is
-// matched here automatically. Admin action → staff:write.
+// matched here automatically. staff:write invites at any role; staff:invite
+// alone (store manager, area manager) is capped at the inviter's own role —
+// an invite can carry any role, so that cap is the only thing stopping it
+// from being a privilege-escalation path.
 import { randomBytes } from 'node:crypto'
 import { recordAudit } from '../../../../core/audit/record.mjs'
 // @ts-ignore .mjs shared module
 import { ROLES } from '../../../../core/permissions/catalog.mjs'
 
 export default defineEventHandler(async (event) => {
-  const ctx = await requireActor(event, { scope: 'staff:write' })
+  const ctx = await requireActor(event)
+  if (!ctx.has('staff:write') && !ctx.has('staff:invite')) {
+    throw denied('staff:invite', { scopes: ctx.scopes, role: ctx.role, kind: ctx.kind, name: ctx.actorName })
+  }
   const body = await readBody(event)
   const db = getAdminClient()
 
@@ -15,6 +21,9 @@ export default defineEventHandler(async (event) => {
   const role = String(body?.role || 'staff')
   if (!email.includes('@')) throw apiError(400, 'A valid email is required')
   if (!ROLES.includes(role)) throw apiError(400, `role must be one of: ${ROLES.join(', ')}`)
+  if (!ctx.has('staff:write') && !roleAtLeast(ctx.role, role)) {
+    throw apiError(403, `You cannot invite someone at a role senior to your own (${ctx.role}).`)
+  }
 
   // One live invite per email/workspace — replace any existing pending one.
   await db.from('workspace_invites').delete()
