@@ -176,7 +176,7 @@
 const { staff, isSupervisor } = useSession()
 const route = useRoute()
 
-const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
+const today = todaySG()
 
 const { data: statusRes, refresh: refreshStatus, pending: statusPending } = await useFetch<any>('/api/v1/clock/status', { lazy: true })
 const status = computed<any>(() => statusRes.value?.data)
@@ -314,9 +314,5 @@ function fmtVal(v: string) {
   if (/^\d{4}-\d{2}-\d{2}T/.test(v)) return fmtTime(v)
   return v
 }
-function addDays(date: string, n: number) {
-  const d = new Date(`${date}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + n)
-  return d.toISOString().slice(0, 10)
-}
+
 </script>

@@ -118,7 +118,7 @@
 const { staff, isSupervisor, isManager } = useSession()
 
 const firstName = computed(() => staff.value?.display_name.split(' ')[0])
-const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
+const today = todaySG()
 const weekStart = mondayOf(today)
 
 const { data: statusRes } = await useFetch<any>('/api/v1/clock/status', { lazy: true })
@@ -198,14 +198,5 @@ function fmtDow(date: string) {
 function fmtShort(date: string) {
   return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', timeZone: 'UTC' })
 }
-function mondayOf(date: string) {
-  const d = new Date(`${date}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
-  return d.toISOString().slice(0, 10)
-}
-function addDays(date: string, n: number) {
-  const d = new Date(`${date}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + n)
-  return d.toISOString().slice(0, 10)
-}
+
 </script>

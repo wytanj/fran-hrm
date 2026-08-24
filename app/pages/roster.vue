@@ -7,20 +7,18 @@
           class="h-9 rounded-md border border-line bg-white px-2.5 text-[13px] font-medium">
           <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.name }}</option>
         </select>
-        <div class="flex items-center gap-1 rounded-md border border-line bg-white">
-          <button class="press h-9 w-8 text-brown disabled:opacity-40" :disabled="pending"
-            aria-label="Previous week" @click="shiftWeek(-7)">‹</button>
-          <span class="flex min-w-[128px] items-center justify-center gap-1.5 px-1 text-center text-[12.5px] font-semibold tabular-nums">
-            <UiSpinner v-if="pending" size="xs" />
-            {{ weekLabel }}
-          </span>
-          <button class="press h-9 w-8 text-brown disabled:opacity-40" :disabled="pending"
-            aria-label="Next week" @click="shiftWeek(7)">›</button>
-        </div>
-        <button v-if="weekStart !== thisMonday" class="press h-9 rounded-md border border-line bg-white px-3 text-[12.5px] font-semibold text-brown" @click="weekStart = thisMonday">
-          This week
-        </button>
-        <button v-if="isSupervisor && roster" type="button"
+        <UiCalendarNav
+          v-model:mode="mode"
+          :label="label"
+          :can-go-prev="canGoPrev"
+          :can-go-next="canGoNext"
+          :show-today="!containsToday"
+          :pending="pending"
+          @prev="prev"
+          @next="next"
+          @today="goToday"
+        />
+        <button v-if="isSupervisor && mode === 'week' && roster" type="button"
           class="no-print press h-9 rounded-md border px-3 text-[12.5px] font-semibold text-brown"
           :class="showHistory ? 'border-yellow-deep bg-yellow-soft' : 'border-line bg-white'"
           @click="toggleHistory">
@@ -34,15 +32,17 @@
 
     <!-- Status strip -->
     <div class="mb-4 flex flex-wrap items-center gap-3">
-      <UiBadge v-if="roster" :tone="roster.status === 'published' ? 'success' : 'warning'">
-        {{ roster.status }}<span v-if="roster.version > 1"> · v{{ roster.version }}</span>
-      </UiBadge>
-      <UiBadge v-else tone="muted">no roster</UiBadge>
-      <p v-if="roster" class="text-[12px] text-muted">
+      <template v-if="mode === 'week'">
+        <UiBadge v-if="roster" :tone="roster.status === 'published' ? 'success' : 'warning'">
+          {{ roster.status }}<span v-if="roster.version > 1"> · v{{ roster.version }}</span>
+        </UiBadge>
+        <UiBadge v-else tone="muted">no roster</UiBadge>
+      </template>
+      <p v-if="shifts.length || roster" class="text-[12px] text-muted">
         {{ shifts.length }} shifts · {{ totalHours }}h scheduled · {{ assignedCount }} assigned
         <span v-if="openShiftCount" class="text-warning"> · {{ openShiftCount }} open</span>
       </p>
-      <div v-if="isManager && roster" class="ml-auto flex items-center gap-2">
+      <div v-if="isManager && mode === 'week' && roster" class="ml-auto flex items-center gap-2">
         <UiButton size="sm" variant="secondary" :loading="busy" @click="showAdd = !showAdd">
           {{ showAdd ? 'Close' : '+ Add shift' }}
         </UiButton>
@@ -52,8 +52,8 @@
       </div>
     </div>
 
-    <!-- Guardrails -->
-    <div v-if="warnings.length && isManager" class="no-print mb-4 rounded-lg border border-warning/30 bg-warning-soft p-3.5">
+    <!-- Guardrails (week editing only) -->
+    <div v-if="warnings.length && isManager && mode === 'week'" class="no-print mb-4 rounded-lg border border-warning/30 bg-warning-soft p-3.5">
       <p class="text-[12.5px] font-semibold text-warning">{{ warnings.length }} guardrail warning{{ warnings.length > 1 ? 's' : '' }} — review before publishing</p>
       <ul class="mt-1.5 space-y-0.5">
         <li v-for="(w, i) in warnings" :key="i" class="text-[12px] text-ink-soft">
@@ -63,7 +63,7 @@
     </div>
 
     <!-- Add shift inline form -->
-    <div v-if="showAdd && isManager && roster" class="no-print mb-4 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
+    <div v-if="showAdd && isManager && mode === 'week' && roster" class="no-print mb-4 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <label class="block">
           <span class="mb-1 block text-[11px] font-semibold text-ink-soft">Day</span>
@@ -117,7 +117,7 @@
     </div>
 
     <!-- Change history timeline -->
-    <div v-if="showHistory && roster" class="no-print mb-4 overflow-hidden rounded-lg border border-line bg-white shadow-warm-xs">
+    <div v-if="showHistory && mode === 'week' && roster" class="no-print mb-4 overflow-hidden rounded-lg border border-line bg-white shadow-warm-xs">
       <div class="flex items-center gap-2 border-b border-line-soft px-4 py-2.5">
         <p class="font-display text-[14px] font-bold text-ink">Change history</p>
         <span v-if="history" class="text-[11.5px] text-muted">{{ history.total }} event(s)</span>
@@ -148,97 +148,166 @@
       </ul>
     </div>
 
-    <!-- Empty state / draft creation -->
-    <UiTableSkeleton v-if="pending && !roster" :rows="5" :columns="8" />
+    <!-- ===== Week ===== -->
+    <template v-if="mode === 'week'">
+      <UiTableSkeleton v-if="pending && !roster" :rows="5" :columns="8" />
 
-    <div v-else-if="!roster && !pending" class="rounded-lg border border-line-soft bg-white p-8 text-center shadow-warm-sm">
-      <p class="font-display text-[19px] font-bold text-ink">No roster for {{ weekLabel }}</p>
-      <p class="mx-auto mt-1 max-w-md text-[13px] text-muted">
-        {{ isManager ? 'Start from scratch, or copy the previous week and adjust.' : "Your manager hasn't published this week yet." }}
-      </p>
-      <div v-if="isManager" class="mt-4 flex justify-center gap-2">
-        <UiButton size="sm" :loading="busy" @click="createDraft(false)">Create empty draft</UiButton>
-        <UiButton size="sm" variant="secondary" :loading="busy" @click="createDraft(true)">Copy last week</UiButton>
-      </div>
-    </div>
-
-    <!-- ===== Desktop matrix: staff rows × day columns ===== -->
-    <UiBusy v-else-if="roster" :busy="pending" label="Loading week…">
-    <div class="hidden overflow-x-auto rounded-lg border border-line-soft bg-white shadow-warm-sm md:block">
-      <table class="w-full min-w-[900px] border-collapse text-left">
-        <thead>
-          <tr class="border-b border-line bg-surface-sunken/60">
-            <th class="sticky left-0 z-10 bg-surface-sunken px-3.5 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.5px] text-muted">Staff</th>
-            <th v-for="d in days" :key="d.date"
-              class="border-l border-line-soft px-2 py-2 text-center text-[10.5px] font-semibold uppercase tracking-[0.5px]"
-              :class="d.date === today ? 'bg-yellow-soft text-brown' : 'text-muted'">
-              {{ d.dow }}<span class="ml-1 font-normal normal-case tabular-nums">{{ d.dayNum }}</span>
-            </th>
-            <th class="border-l border-line px-3 py-2 text-right text-[10.5px] font-semibold uppercase tracking-[0.5px] text-muted">Hrs</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in matrix" :key="row.staff_id || 'open'" class="border-b border-line-soft last:border-0">
-            <td class="sticky left-0 z-10 bg-white px-3.5 py-2">
-              <p class="text-[13px] font-semibold text-ink">{{ row.name }}<UiDummyTag :show="row.dummy" /></p>
-              <p class="text-[11px] text-muted">
-                {{ row.employee_code }}<span v-if="row.type"> · {{ empTypeShort(row.type) }}</span>
-                <span v-if="row.cap" class="text-muted"> · cap {{ row.cap }}h</span>
-              </p>
-            </td>
-            <td v-for="d in days" :key="d.date"
-              class="border-l border-line-soft px-1.5 py-1.5 align-top"
-              :class="d.date === today ? 'bg-yellow-soft/30' : ''">
-              <div v-for="sh in row.byDate[d.date] || []" :key="sh.id"
-                class="group relative mb-1 rounded-[6px] px-2 py-1.5 text-center last:mb-0"
-                :class="sh.staff_id ? 'bg-blue-soft' : 'border border-dashed border-warning/50 bg-warning-soft'">
-                <p class="text-[11.5px] font-semibold leading-tight tabular-nums text-ink">
-                  {{ fmtTime(sh.start_at) }}–{{ fmtTime(sh.end_at) }}
-                </p>
-                <p v-if="sh.job_code" class="text-[10px] leading-tight text-muted">{{ sh.job_code }}</p>
-                <button v-if="isManager"
-                  class="no-print press absolute -right-1 -top-1 hidden h-4 w-4 items-center justify-center rounded-full bg-danger text-[9px] font-bold text-white group-hover:flex"
-                  aria-label="Remove shift" @click="removeShift(sh)">✕</button>
-              </div>
-              <p v-if="!(row.byDate[d.date] || []).length && row.staff_id" class="py-1 text-center text-[11px] text-line-strong">·</p>
-            </td>
-            <td class="border-l border-line px-3 py-2 text-right">
-              <span class="text-[13px] font-semibold tabular-nums"
-                :class="row.overCap || row.hours > 44 ? 'text-warning' : 'text-ink'">{{ row.hours }}</span>
-            </td>
-          </tr>
-          <tr class="border-t border-line bg-surface-sunken/60">
-            <td class="sticky left-0 z-10 bg-surface-sunken px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">Cover</td>
-            <td v-for="d in days" :key="d.date" class="border-l border-line-soft px-2 py-2 text-center text-[12px] font-semibold tabular-nums"
-              :class="coverByDate[d.date] ? 'text-ink' : 'text-danger'">
-              {{ coverByDate[d.date] || 0 }}
-            </td>
-            <td class="border-l border-line px-3 py-2 text-right text-[13px] font-bold tabular-nums text-ink">{{ totalHours }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    </UiBusy>
-
-    <!-- ===== Mobile: day-by-day list ===== -->
-    <div v-if="roster" class="space-y-3 md:hidden">
-      <div v-for="d in days" :key="d.date">
-        <p class="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">
-          {{ d.label }}<span v-if="d.date === today" class="text-brown"> · today</span>
+      <div v-else-if="!roster && !pending" class="rounded-lg border border-line-soft bg-white p-8 text-center shadow-warm-sm">
+        <p class="font-display text-[19px] font-bold text-ink">No roster for {{ label }}</p>
+        <p class="mx-auto mt-1 max-w-md text-[13px] text-muted">
+          {{ isManager ? 'Start from scratch, or copy the previous week and adjust.' : "Your manager hasn't published this week yet." }}
         </p>
-        <div class="overflow-hidden rounded-lg border border-line-soft bg-white">
-          <div v-for="(sh, i) in shiftsByDate[d.date] || []" :key="sh.id"
-            class="flex items-center gap-3 px-3.5 py-2.5" :class="i > 0 ? 'border-t border-line-soft' : ''">
-            <span class="w-[92px] shrink-0 text-[12.5px] font-semibold tabular-nums">{{ fmtTime(sh.start_at) }}–{{ fmtTime(sh.end_at) }}</span>
-            <span class="flex-1 truncate text-[13px]" :class="sh.staff ? 'text-ink' : 'italic text-warning'">
-              {{ sh.staff?.display_name || 'Open shift' }}<UiDummyTag :show="memberById.get(sh.staff_id)?.is_dummy" />
-            </span>
-            <button v-if="isManager" class="press text-[11px] text-danger" @click="removeShift(sh)">✕</button>
-          </div>
-          <p v-if="!(shiftsByDate[d.date] || []).length" class="px-3.5 py-2.5 text-[12.5px] text-muted">No shifts</p>
+        <div v-if="isManager" class="mt-4 flex justify-center gap-2">
+          <UiButton size="sm" :loading="busy" @click="createDraft(false)">Create empty draft</UiButton>
+          <UiButton size="sm" variant="secondary" :loading="busy" @click="createDraft(true)">Copy last week</UiButton>
         </div>
       </div>
-    </div>
+
+      <!-- Desktop matrix: staff rows × day columns -->
+      <UiBusy v-else-if="roster" :busy="pending" label="Loading week…">
+      <div class="hidden overflow-x-auto rounded-lg border border-line-soft bg-white shadow-warm-sm md:block">
+        <table class="w-full min-w-[900px] border-collapse text-left">
+          <thead>
+            <tr class="border-b border-line bg-surface-sunken/60">
+              <th class="sticky left-0 z-10 bg-surface-sunken px-3.5 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.5px] text-muted">Staff</th>
+              <th v-for="d in days" :key="d.date"
+                class="border-l border-line-soft px-2 py-2 text-center text-[10.5px] font-semibold uppercase tracking-[0.5px]"
+                :class="d.date === today ? 'bg-yellow-soft text-brown' : 'text-muted'">
+                {{ d.dow }}<span class="ml-1 font-normal normal-case tabular-nums">{{ d.dayNum }}</span>
+              </th>
+              <th class="border-l border-line px-3 py-2 text-right text-[10.5px] font-semibold uppercase tracking-[0.5px] text-muted">Hrs</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in matrix" :key="row.staff_id || 'open'" class="border-b border-line-soft last:border-0">
+              <td class="sticky left-0 z-10 bg-white px-3.5 py-2">
+                <p class="text-[13px] font-semibold text-ink">{{ row.name }}<UiDummyTag :show="row.dummy" /></p>
+                <p class="text-[11px] text-muted">
+                  {{ row.employee_code }}<span v-if="row.type"> · {{ empTypeShort(row.type) }}</span>
+                  <span v-if="row.cap" class="text-muted"> · cap {{ row.cap }}h</span>
+                </p>
+              </td>
+              <td v-for="d in days" :key="d.date"
+                class="border-l border-line-soft px-1.5 py-1.5 align-top"
+                :class="d.date === today ? 'bg-yellow-soft/30' : ''">
+                <div v-for="sh in row.byDate[d.date] || []" :key="sh.id"
+                  class="group relative mb-1 rounded-[6px] px-2 py-1.5 text-center last:mb-0"
+                  :class="sh.staff_id ? 'bg-blue-soft' : 'border border-dashed border-warning/50 bg-warning-soft'">
+                  <p class="text-[11.5px] font-semibold leading-tight tabular-nums text-ink">
+                    {{ fmtTime(sh.start_at) }}–{{ fmtTime(sh.end_at) }}
+                  </p>
+                  <p v-if="sh.job_code" class="text-[10px] leading-tight text-muted">{{ sh.job_code }}</p>
+                  <button v-if="isManager"
+                    class="no-print press absolute -right-1 -top-1 hidden h-4 w-4 items-center justify-center rounded-full bg-danger text-[9px] font-bold text-white group-hover:flex"
+                    aria-label="Remove shift" @click="removeShift(sh)">✕</button>
+                </div>
+                <p v-if="!(row.byDate[d.date] || []).length && row.staff_id" class="py-1 text-center text-[11px] text-line-strong">·</p>
+              </td>
+              <td class="border-l border-line px-3 py-2 text-right">
+                <span class="text-[13px] font-semibold tabular-nums"
+                  :class="row.overCap || row.hours > 44 ? 'text-warning' : 'text-ink'">{{ row.hours }}</span>
+              </td>
+            </tr>
+            <tr class="border-t border-line bg-surface-sunken/60">
+              <td class="sticky left-0 z-10 bg-surface-sunken px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">Cover</td>
+              <td v-for="d in days" :key="d.date" class="border-l border-line-soft px-2 py-2 text-center text-[12px] font-semibold tabular-nums"
+                :class="coverByDate[d.date] ? 'text-ink' : 'text-danger'">
+                {{ coverByDate[d.date] || 0 }}
+              </td>
+              <td class="border-l border-line px-3 py-2 text-right text-[13px] font-bold tabular-nums text-ink">{{ totalHours }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      </UiBusy>
+
+      <!-- Mobile: day-by-day list -->
+      <div v-if="roster" class="space-y-3 md:hidden">
+        <div v-for="d in days" :key="d.date">
+          <p class="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">
+            {{ d.label }}<span v-if="d.date === today" class="text-brown"> · today</span>
+          </p>
+          <div class="overflow-hidden rounded-lg border border-line-soft bg-white">
+            <div v-for="(sh, i) in shiftsByDate[d.date] || []" :key="sh.id"
+              class="flex items-center gap-3 px-3.5 py-2.5" :class="i > 0 ? 'border-t border-line-soft' : ''">
+              <span class="w-[92px] shrink-0 text-[12.5px] font-semibold tabular-nums">{{ fmtTime(sh.start_at) }}–{{ fmtTime(sh.end_at) }}</span>
+              <span class="flex-1 truncate text-[13px]" :class="sh.staff ? 'text-ink' : 'italic text-warning'">
+                {{ sh.staff?.display_name || 'Open shift' }}<UiDummyTag :show="memberById.get(sh.staff_id)?.is_dummy" />
+              </span>
+              <button v-if="isManager" class="press text-[11px] text-danger" @click="removeShift(sh)">✕</button>
+            </div>
+            <p v-if="!(shiftsByDate[d.date] || []).length" class="px-3.5 py-2.5 text-[12.5px] text-muted">No shifts</p>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ===== Day: one day's shifts as a dense list ===== -->
+    <UiBusy v-else-if="mode === 'day'" :busy="pending" label="Loading day…">
+      <UiTable :columns="[
+        { key: 'time', label: 'Time', width: '140px' },
+        { key: 'staff', label: 'Staff' },
+        { key: 'job', label: 'Job', width: '120px' },
+        { key: 'hours', label: 'Hours', align: 'right', width: '80px' },
+      ]">
+        <tr v-for="sh in dayShifts" :key="sh.id" class="border-b border-line-soft last:border-0">
+          <td class="px-3.5 py-2.5 font-semibold tabular-nums text-ink">{{ fmtTime(sh.start_at) }}–{{ fmtTime(sh.end_at) }}</td>
+          <td class="px-3.5 py-2.5">
+            <span :class="sh.staff ? 'font-semibold text-ink' : 'italic text-warning'">
+              {{ sh.staff?.display_name || 'Open shift' }}
+            </span>
+            <UiDummyTag :show="memberById.get(sh.staff_id)?.is_dummy" />
+            <span v-if="sh.staff?.employee_code" class="ml-1.5 text-[11.5px] text-muted">{{ sh.staff.employee_code }}</span>
+          </td>
+          <td class="px-3.5 py-2.5 text-muted">{{ sh.job_code || '—' }}</td>
+          <td class="px-3.5 py-2.5 text-right tabular-nums">{{ Math.round(netHours(sh) * 10) / 10 }}</td>
+        </tr>
+        <tr v-if="!dayShifts.length">
+          <td colspan="4" class="px-3.5 py-8 text-center text-[13px] text-muted">
+            No shifts on {{ label }}.
+          </td>
+        </tr>
+      </UiTable>
+    </UiBusy>
+
+    <!-- ===== Month: calendar of headcount / shift-count, not a 30-col matrix ===== -->
+    <UiBusy v-else-if="mode === 'month'" :busy="pending" label="Loading month…">
+      <div class="overflow-hidden rounded-lg border border-line-soft bg-white shadow-warm-sm">
+        <div class="grid grid-cols-7 border-b border-line bg-surface-sunken/60">
+          <div v-for="dow in weekDow" :key="dow"
+            class="px-2 py-2 text-center text-[10.5px] font-semibold uppercase tracking-[0.5px] text-muted">
+            {{ dow }}
+          </div>
+        </div>
+        <div v-for="(week, wi) in calendarWeeks" :key="wi" class="grid grid-cols-7 border-b border-line-soft last:border-0">
+          <button
+            v-for="cell in week" :key="cell.date"
+            type="button"
+            class="press min-h-[88px] border-l border-line-soft px-2 py-2 text-left first:border-l-0 disabled:cursor-default disabled:opacity-40"
+            :class="cellClass(cell)"
+            :disabled="!cell.inWindow"
+            :aria-label="cell.date"
+            @click="openDay(cell.date)"
+          >
+            <span class="text-[13px] font-semibold tabular-nums" :class="cell.date === today ? 'text-brown' : 'text-ink'">
+              {{ cell.dayNum }}
+            </span>
+            <span v-if="cell.date === today" class="ml-1 text-[10px] font-semibold uppercase tracking-[0.3px] text-brown">today</span>
+            <template v-if="cell.inMonth && monthStats[cell.date]">
+              <p class="mt-1 text-[12px] font-semibold tabular-nums text-ink">
+                {{ monthStats[cell.date].assigned }} on
+              </p>
+              <p class="text-[11px] tabular-nums text-muted">
+                {{ monthStats[cell.date].shifts }} shift{{ monthStats[cell.date].shifts === 1 ? '' : 's' }}
+                <span v-if="monthStats[cell.date].open" class="text-warning"> · {{ monthStats[cell.date].open }} open</span>
+              </p>
+            </template>
+            <p v-else-if="cell.inMonth" class="mt-1 text-[11px] text-line-strong">—</p>
+          </button>
+        </div>
+      </div>
+      <p class="mt-2 text-[11.5px] text-muted">Tap a day to see its shifts. Building and publishing still happen a week at a time.</p>
+    </UiBusy>
 
     <p v-if="error" class="mt-3 text-[13px] text-danger">{{ error }}</p>
   </div>
@@ -247,24 +316,41 @@
 <script setup lang="ts">
 const { staff, isManager, isSupervisor } = useSession()
 
-const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
-const thisMonday = mondayOf(today)
-const weekStart = ref(thisMonday)
+const today = todaySG()
+const {
+  mode, anchor, rangeStart, rangeEnd, label,
+  next, prev, goToday, setAnchor,
+  canGoPrev, canGoNext, containsToday,
+  minDate, maxDate,
+} = useDateRangeNav({ initialMode: 'week', initialAnchor: mondayOf(today) })
+
 const storeId = ref(staff.value?.home_store_id || '')
 const error = ref('')
 const busy = ref(false)
 const showAdd = ref(false)
+const showHistory = ref(false)
+const pendingRemoval = ref<any>(null)
+
+const rosterWeekStart = ref(mondayOf(today))
+watch([mode, rangeStart], () => {
+  if (mode.value === 'week') rosterWeekStart.value = rangeStart.value
+})
+watch(mode, () => {
+  showAdd.value = false
+  showHistory.value = false
+  pendingRemoval.value = null
+})
 
 // These four are independent — fire them together. As four sequential
 // top-level awaits they were four serial SSR round trips, each re-running
 // session auth; Promise.all keeps the server-rendered data but overlaps the
 // latency (this is what made /roster feel slow with no data).
-const [{ data: storesRes }, { data: rosterRes, refresh, pending }, { data: templatesRes }, { data: membersRes }] =
+const [{ data: storesRes }, { data: rosterRes, refresh, pending: rosterPending }, { data: templatesRes }, { data: membersRes }] =
   await Promise.all([
     useFetch<any>('/api/v1/stores', { lazy: true }),
     useFetch<any>('/api/v1/rosters', {
-      query: computed(() => ({ store_id: storeId.value, week_start: weekStart.value })),
-      watch: [storeId, weekStart], lazy: true,
+      query: computed(() => ({ store_id: storeId.value, week_start: rosterWeekStart.value })),
+      watch: [storeId, rosterWeekStart], lazy: true,
     }),
     useFetch<any>('/api/v1/templates', { lazy: true }),
     useFetch<any>('/api/v1/staff', {
@@ -272,11 +358,27 @@ const [{ data: storesRes }, { data: rosterRes, refresh, pending }, { data: templ
     }),
   ])
 
+const { data: rangeShiftsRes, refresh: refreshRangeShifts, pending: shiftsPending } = await useFetch<any>('/api/v1/shifts', {
+  query: computed(() => ({
+    store_id: storeId.value,
+    from: rangeStart.value,
+    to: rangeEnd.value,
+    limit: 500,
+  })),
+  watch: false, immediate: false, lazy: true, default: () => ({ data: [] }),
+})
+watch([mode, rangeStart, rangeEnd, storeId], () => {
+  if (mode.value !== 'week' && storeId.value) refreshRangeShifts()
+})
+
+const pending = computed(() => (mode.value === 'week' ? rosterPending.value : shiftsPending.value))
+
 const stores = computed<any[]>(() => (storesRes.value?.data || []).filter((s: any) => s.kind === 'store'))
 watch(stores, (list) => { if (!storeId.value && list.length) storeId.value = list[0].id }, { immediate: true })
 
 const roster = computed<any>(() => rosterRes.value?.data)
-const shifts = computed<any[]>(() => roster.value?.shifts || [])
+const shifts = computed<any[]>(() =>
+  mode.value === 'week' ? (roster.value?.shifts || []) : (rangeShiftsRes.value?.data || []))
 const templates = computed<any[]>(() => templatesRes.value?.data || [])
 const members = computed<any[]>(() => membersRes.value?.data || [])
 const memberById = computed(() => new Map(members.value.map((m: any) => [m.id, m])))
@@ -296,15 +398,42 @@ const warnings = computed<any[]>(() => detailRes.value?.warnings || [])
 
 const days = computed(() =>
   Array.from({ length: 7 }, (_, i) => {
-    const date = addDays(weekStart.value, i)
-    const d = new Date(`${date}T00:00:00Z`)
-    return {
-      date,
-      dow: d.toLocaleDateString('en-SG', { weekday: 'short', timeZone: 'UTC' }),
-      dayNum: date.slice(8),
-      label: d.toLocaleDateString('en-SG', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' }),
-    }
+    const date = addDays(mondayOf(anchor.value), i)
+    const p = dateParts(date)
+    return { date, dow: p.dow, dayNum: date.slice(8), label: p.label }
   }))
+
+const weekDow = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const calendarWeeks = computed(() =>
+  monthWeeks(anchor.value).map((week) => week.map((date) => ({
+    date,
+    dayNum: String(Number(date.slice(8))),
+    inMonth: date.slice(0, 7) === startOfMonth(anchor.value).slice(0, 7),
+    inWindow: date >= minDate && date <= maxDate,
+  }))))
+
+const monthStats = computed(() => {
+  const out: Record<string, { shifts: number; assigned: number; open: number }> = {}
+  for (const sh of shifts.value) {
+    const slot = out[sh.work_date] || { shifts: 0, assigned: 0, open: 0 }
+    slot.shifts += 1
+    if (sh.staff_id) slot.assigned += 1
+    else slot.open += 1
+    out[sh.work_date] = slot
+  }
+  return out
+})
+
+function cellClass(cell: { date: string; inMonth: boolean; inWindow: boolean }) {
+  if (!cell.inMonth) return 'bg-surface-sunken/50 text-muted'
+  if (cell.date === today) return 'bg-yellow-soft/40'
+  return 'bg-white'
+}
+
+function openDay(date: string) {
+  setAnchor(date)
+  if (anchor.value === date) mode.value = 'day'
+}
 
 const shiftsByDate = computed(() => {
   const out: Record<string, any[]> = {}
@@ -312,6 +441,8 @@ const shiftsByDate = computed(() => {
   for (const k in out) out[k].sort((a, b) => a.start_at.localeCompare(b.start_at))
   return out
 })
+
+const dayShifts = computed(() => shiftsByDate.value[rangeStart.value] || [])
 
 const coverByDate = computed(() => {
   const out: Record<string, number> = {}
@@ -358,19 +489,19 @@ const totalHours = computed(() => Math.round(shifts.value.reduce((s, sh) => s + 
 const assignedCount = computed(() => shifts.value.filter((s) => s.staff_id).length)
 const openShiftCount = computed(() => shifts.value.filter((s) => !s.staff_id).length)
 
-const weekLabel = computed(() => `${fmtShort(weekStart.value)} – ${fmtShort(addDays(weekStart.value, 6))}`)
-
 const newShift = reactive({ date: '', template_id: '', staff_id: '', reason: '' })
 watch(days, () => { if (!newShift.date) newShift.date = days.value[0].date }, { immediate: true })
 watch(templates, () => { if (!newShift.template_id && templates.value.length) newShift.template_id = templates.value[0].id }, { immediate: true })
-watch(weekStart, () => { newShift.date = days.value[0].date })
-
-function shiftWeek(n: number) { weekStart.value = addDays(weekStart.value, n) }
+watch(rangeStart, () => { newShift.date = days.value[0].date })
 
 async function reloadAll() {
-  await refresh()
-  await refreshDetail()
-  if (showHistory.value && roster.value) await loadHistory()
+  if (mode.value === 'week') {
+    await refresh()
+    await refreshDetail()
+    if (showHistory.value && roster.value) await loadHistory()
+  } else {
+    await refreshRangeShifts()
+  }
 }
 
 async function createDraft(copy: boolean) {
@@ -380,8 +511,8 @@ async function createDraft(copy: boolean) {
       method: 'POST',
       body: {
         store_id: storeId.value,
-        week_start: weekStart.value,
-        copy_from_week: copy ? addDays(weekStart.value, -7) : undefined,
+        week_start: rosterWeekStart.value,
+        copy_from_week: copy ? addDays(rosterWeekStart.value, -7) : undefined,
       },
     })
     await reloadAll()
@@ -408,7 +539,6 @@ async function addShift() {
 
 // Removal is two-step so an optional reason can be captured for the audit
 // trail (disputes turn on the why). Clicking ✕ stages; a bar confirms.
-const pendingRemoval = ref<any>(null)
 const removalReason = ref('')
 function removeShift(sh: any) { pendingRemoval.value = sh; removalReason.value = '' }
 function cancelRemoval() { pendingRemoval.value = null; removalReason.value = '' }
@@ -424,7 +554,6 @@ async function confirmRemoval() {
 }
 
 // ── change history ──
-const showHistory = ref(false)
 const history = ref<any>(null)
 const historyLoading = ref(false)
 const historyDenied = ref(false)
@@ -464,9 +593,6 @@ function print() { window.print() }
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Singapore' })
 }
-function fmtShort(date: string) {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-}
 function fmtDateTime(iso: string) {
   return new Date(iso).toLocaleString('en-SG', {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Singapore',
@@ -482,15 +608,5 @@ function badgeClass(op: string) {
     DELETE: 'bg-danger-soft text-danger',
     ACTION: 'bg-surface-sunken text-ink-soft',
   } as Record<string, string>)[op] || 'bg-surface-sunken text-ink-soft'
-}
-function mondayOf(date: string) {
-  const d = new Date(`${date}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
-  return d.toISOString().slice(0, 10)
-}
-function addDays(date: string, n: number) {
-  const d = new Date(`${date}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + n)
-  return d.toISOString().slice(0, 10)
 }
 </script>

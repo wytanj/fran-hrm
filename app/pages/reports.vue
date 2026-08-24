@@ -3,9 +3,14 @@
     <UiPageHeader eyebrow="Manager tools" title="Timesheets & reports"
       subtitle="Scheduled versus actual, overtime, adherence flags, weekly sign-off and payroll periods.">
       <template #actions>
-        <input v-model="from" type="date" class="h-9 rounded-md border border-line bg-white px-2.5 text-[13px]">
+        <div class="w-[210px] shrink-0">
+          <UiSegmented :items="rangeShortcuts" :model-value="activeShortcut" @update:model-value="applyShortcut" />
+        </div>
+        <input v-model="from" type="date" :min="minDate" :max="maxDate"
+          class="h-9 rounded-md border border-line bg-white px-2.5 text-[13px]" @change="clampRange">
         <span class="text-[12px] text-muted">to</span>
-        <input v-model="to" type="date" class="h-9 rounded-md border border-line bg-white px-2.5 text-[13px]">
+        <input v-model="to" type="date" :min="minDate" :max="maxDate"
+          class="h-9 rounded-md border border-line bg-white px-2.5 text-[13px]" @change="clampRange">
         <select v-model="storeId" class="h-9 rounded-md border border-line bg-white px-2.5 text-[13px] font-medium">
           <option value="">All stores</option>
           <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.name }}</option>
@@ -284,9 +289,31 @@ definePageMeta({ middleware: ['supervisor-only'] })
 const { isAreaManager } = useSession()
 const route = useRoute()
 
-const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
+const today = todaySG()
+const { min: minDate, max: maxDate } = navWindow(today)
 const from = ref(addDays(today, -13))
 const to = ref(today)
+
+const rangeShortcuts = [
+  { key: 'day', label: 'Day' },
+  { key: 'week', label: 'Week' },
+  { key: 'month', label: 'Month' },
+]
+const activeShortcut = computed(() => {
+  if (from.value === today && to.value === today) return 'day'
+  if (from.value === mondayOf(today) && to.value === addDays(mondayOf(today), 6)) return 'week'
+  if (from.value === startOfMonth(today) && to.value === endOfMonth(today)) return 'month'
+  return ''
+})
+function applyShortcut(key: string) {
+  if (key === 'day') { from.value = today; to.value = today; return }
+  if (key === 'week') { from.value = mondayOf(today); to.value = addDays(from.value, 6); return }
+  if (key === 'month') { from.value = startOfMonth(today); to.value = endOfMonth(today) }
+}
+function clampRange() {
+  from.value = clampDate(from.value, minDate, maxDate)
+  to.value = clampDate(to.value, minDate, maxDate)
+}
 const storeId = ref('')
 const includeDummy = ref(false)
 const error = ref('')
@@ -458,11 +485,6 @@ function fmtVal(v: string) {
     return new Date(v).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Singapore' })
   }
   return v
-}
-function addDays(date: string, n: number) {
-  const d = new Date(`${date}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + n)
-  return d.toISOString().slice(0, 10)
 }
 function fmtDateShort(iso: string) {
   return new Date(iso).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', timeZone: 'Asia/Singapore' })
