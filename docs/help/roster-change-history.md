@@ -16,7 +16,7 @@ Every change to a roster is recorded on an append-only trail: adding a shift, mo
 
 ## Where to find it
 
-Open **Roster**, pick the store and week, then click **History** in the top bar. The timeline shows the newest change first. Each entry names the person, the time, a plain-language summary of the change, and — where one was given — the reason.
+Open **Roster**, pick the store, switch to **Week** for the week you want, then click **History** in the top bar. History is per published/draft week, so it lives on the week view. The timeline shows the newest change first. Each entry names the person, the time, a plain-language summary of the change, and — where one was given — the reason.
 
 Deleted shifts still appear: the trail outlives the shift, so a shift that was removed last Tuesday is still accountable.
 

@@ -536,18 +536,7 @@ const tabs = [
 ]
 const tab = ref('generate')
 
-const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
-function mondayOf(date: string) {
-  const d = new Date(`${date}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
-  return d.toISOString().slice(0, 10)
-}
-function addDays(date: string, n: number) {
-  const d = new Date(`${date}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + n)
-  return d.toISOString().slice(0, 10)
-}
-
+const today = todaySG()
 const weekStart = ref(addDays(mondayOf(today), 7))
 const storeId = ref(staff.value?.home_store_id || '')
 const error = ref('')

@@ -5,7 +5,7 @@ summary: Submit availability before the cutoff; swap shifts with a teammate subj
 category: scheduling
 primary_path: /availability
 related_paths: [/swaps, /roster, /roster-builder]
-intent_tags: [availability, preferences, cannot work, unavailable, shift swap, swap shift, cover my shift, exchange shift, cutoff, lock, locked, manager lock, unlock availability]
+intent_tags: [availability, preferences, cannot work, unavailable, shift swap, swap shift, cover my shift, exchange shift, cutoff, lock, locked, manager lock, unlock availability, month view, this month, week view]
 sort_order: 40
 ---
 
@@ -14,7 +14,7 @@ sort_order: 40
 ## Submitting availability
 
 1. Open **Availability**.
-2. Use the arrows to reach the week you want (it opens on next week).
+2. Use **Day / Week / Month** and the arrows to reach the dates you want (it opens on next week). You can look 12 months either side of today. Week is the usual edit view; month shows the whole month at a glance so you can fill it in one pass.
 3. For each day pick **Can work**, **Prefer**, or **Can't**.
 4. Adjust the time window if you are only free part of the day.
 5. Tap **Submit availability**.

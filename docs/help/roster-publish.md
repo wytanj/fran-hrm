@@ -5,7 +5,7 @@ summary: Drafts are private to managers. Publishing makes the roster live for st
 category: scheduling
 primary_path: /roster
 related_paths: [/availability]
-intent_tags: [roster, build roster, publish roster, draft, schedule staff, weekly roster, guardrail, warning, copy last week, shift template]
+intent_tags: [roster, build roster, publish roster, draft, schedule staff, weekly roster, daily roster, month view, calendar, this month's roster, who is working today, guardrail, warning, copy last week, shift template]
 audience: [supervisor, store_manager, area_manager, hq_admin]
 sort_order: 60
 ---
@@ -23,8 +23,8 @@ Staff never see a draft. Until you publish, nobody is expected to turn up.
 
 ## Build a week
 
-1. Open **Roster** and pick the store and week (weeks start Monday).
-2. Create a draft: **Empty draft**, or **Copy last week** to start from the previous week's pattern.
+1. Open **Roster** and pick the store. Use **Day / Week / Month** to choose how much you see, and the arrows to move around (up to 12 months either side of today). **Week** is the view you build and publish in — a roster is always one Monday–Sunday. Day and month are for browsing: day lists that date's shifts; month is a calendar of headcount per day (tap a day to open it).
+2. In **Week**, create a draft: **Empty draft**, or **Copy last week** to start from the previous week's pattern.
 3. Add shifts: choose the day, a **shift template** (Opening 09:30–18:30, Closing 12:00–21:00, Mid 10:30–19:30), and a staff member. Leave the staff blank to create an **open shift** for the part-time pool to be filled later.
 4. Review the warnings.
 5. **Publish**.

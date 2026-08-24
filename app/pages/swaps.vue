@@ -102,7 +102,7 @@ const filters = [
 ]
 const statusFilter = ref('pending')
 
-const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
+const today = todaySG()
 const { data: shiftsRes } = await useFetch<any>('/api/v1/shifts', { query: { from: today, to: addDays(today, 28) }, lazy: true })
 
 // Only shifts still outside the 24h cutoff can be offered — showing the rest
@@ -157,9 +157,5 @@ function fmtTime(iso?: string) {
   if (!iso) return ''
   return new Date(iso).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Singapore' })
 }
-function addDays(date: string, n: number) {
-  const d = new Date(`${date}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + n)
-  return d.toISOString().slice(0, 10)
-}
+
 </script>

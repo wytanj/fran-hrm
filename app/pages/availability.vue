@@ -3,14 +3,17 @@
     <UiPageHeader eyebrow="Scheduling" title="Availability"
       :subtitle="`Tell your manager when you can work. Changes lock ${cutoffDays} days ahead so the roster can be planned.`">
       <template #actions>
-        <div class="flex items-center gap-1 rounded-md border border-line bg-white">
-          <button class="press h-9 w-8 text-brown disabled:opacity-40" :disabled="pending" aria-label="Previous week" @click="shiftWeek(-7)">‹</button>
-          <span class="flex min-w-[128px] items-center justify-center gap-1.5 px-1 text-center text-[12.5px] font-semibold tabular-nums">
-            <UiSpinner v-if="pending" size="xs" />
-            {{ weekLabel }}
-          </span>
-          <button class="press h-9 w-8 text-brown disabled:opacity-40" :disabled="pending" aria-label="Next week" @click="shiftWeek(7)">›</button>
-        </div>
+        <UiCalendarNav
+          v-model:mode="mode"
+          :label="label"
+          :can-go-prev="canGoPrev"
+          :can-go-next="canGoNext"
+          :show-today="!containsToday"
+          :pending="pending"
+          @prev="prev"
+          @next="next"
+          @today="goToday"
+        />
         <UiButton size="sm" :loading="saving" @click="save">Submit availability</UiButton>
       </template>
     </UiPageHeader>
@@ -83,7 +86,7 @@
 
         <div v-if="myShifts.length" class="mt-4 overflow-hidden rounded-lg border border-line-soft bg-white shadow-warm-xs">
           <p class="border-b border-line-soft px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">
-            Already scheduled this week
+            Already scheduled {{ scheduledScope }}
           </p>
           <div v-for="s in myShifts" :key="s.id" class="flex items-center gap-2 border-b border-line-soft px-3.5 py-2 last:border-0">
             <span class="text-[12.5px] font-semibold tabular-nums">{{ fmtDow(s.work_date) }}</span>
@@ -101,9 +104,16 @@
 
 <script setup lang="ts">
 const cutoffDays = 7
-const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10)
+const today = todaySG()
 const cutoffDate = addDays(today, cutoffDays)
-const weekStart = ref(addDays(mondayOf(today), 7)) // opens on next week
+const {
+  mode, rangeStart, rangeEnd, label,
+  next, prev, goToday,
+  canGoPrev, canGoNext, containsToday,
+} = useDateRangeNav({
+  initialMode: 'week',
+  initialAnchor: addDays(mondayOf(today), 7), // opens on next week
+})
 
 const kinds = [
   { key: 'available', label: 'Can work', active: 'border-success/40 bg-success-soft text-success' },
@@ -119,31 +129,33 @@ interface DayRow {
 const days = ref<DayRow[]>([])
 
 const { data: availRes, refresh, pending } = await useFetch<any>('/api/v1/availability', {
-  query: computed(() => ({ from: weekStart.value, to: addDays(weekStart.value, 6) })),
-  watch: [weekStart], lazy: true,
+  query: computed(() => ({ from: rangeStart.value, to: rangeEnd.value })),
+  watch: [rangeStart, rangeEnd], lazy: true,
 })
 
 const { data: shiftsRes } = await useFetch<any>('/api/v1/shifts', {
-  query: computed(() => ({ from: weekStart.value, to: addDays(weekStart.value, 6) })),
-  watch: [weekStart], default: () => ({ data: [] }), lazy: true,
+  query: computed(() => ({ from: rangeStart.value, to: rangeEnd.value, limit: 500 })),
+  watch: [rangeStart, rangeEnd], default: () => ({ data: [] }), lazy: true,
 })
 const { staff } = useSession()
 const myShifts = computed<any[]>(() =>
   (shiftsRes.value?.data || []).filter((s: any) => s.staff_id === staff.value?.id))
 
-watch([weekStart, availRes], () => {
+const scheduledScope = computed(() =>
+  mode.value === 'day' ? 'this day' : mode.value === 'month' ? 'this month' : 'this week')
+
+watch([rangeStart, rangeEnd, availRes], () => {
   const existing: any[] = availRes.value?.data || []
   const locks: any[] = availRes.value?.locks || []
-  days.value = Array.from({ length: 7 }, (_, i) => {
-    const date = addDays(weekStart.value, i)
+  days.value = eachDate(rangeStart.value, rangeEnd.value).map((date) => {
     const row = existing.find((a) => a.work_date === date)
     const managerLock = locks.find((l) => l.work_date === date) || null
-    const d = new Date(`${date}T00:00:00Z`)
+    const p = dateParts(date)
     return {
       date,
-      dow: d.toLocaleDateString('en-SG', { weekday: 'long', timeZone: 'UTC' }),
+      dow: p.dowLong,
       dayNum: date.slice(8),
-      month: d.toLocaleDateString('en-SG', { month: 'short', timeZone: 'UTC' }),
+      month: p.month,
       kind: row?.kind || 'available',
       start: row?.start_time?.slice(0, 5) || '10:00',
       end: row?.end_time?.slice(0, 5) || '21:30',
@@ -153,8 +165,6 @@ watch([weekStart, availRes], () => {
     }
   })
 }, { immediate: true })
-
-const weekLabel = computed(() => `${fmtShort(weekStart.value)} – ${fmtShort(addDays(weekStart.value, 6))}`)
 
 const saving = ref(false)
 const message = ref('')
@@ -170,8 +180,8 @@ async function save() {
   if (!editable.length) {
     messageTone.value = 'error'
     message.value = days.value.some((d) => d.managerLock)
-      ? 'Every day in this week is locked. Ask your manager to unlock a date if you need to change it.'
-      : 'Every day in this week is past the cutoff.'
+      ? 'Every day in this period is locked. Ask your manager to unlock a date if you need to change it.'
+      : 'Every day in this period is past the cutoff.'
     saving.value = false
     return
   }
@@ -211,24 +221,10 @@ function managerLockHint(day: DayRow) {
     ? `Locked by ${name} on ${at} while the roster is being built. Ask them to unlock it if you need to change this day.`
     : `Locked by ${name} while the roster is being built. Ask them to unlock it if you need to change this day.`
 }
-function shiftWeek(n: number) { weekStart.value = addDays(weekStart.value, n) }
-function fmtShort(date: string) {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-}
 function fmtDow(date: string) {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-SG', { weekday: 'short', timeZone: 'UTC' })
+  return dateParts(date).dow
 }
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Singapore' })
-}
-function mondayOf(date: string) {
-  const d = new Date(`${date}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
-  return d.toISOString().slice(0, 10)
-}
-function addDays(date: string, n: number) {
-  const d = new Date(`${date}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + n)
-  return d.toISOString().slice(0, 10)
 }
 </script>
