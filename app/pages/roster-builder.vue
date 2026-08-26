@@ -207,6 +207,12 @@
                   :disabled="!teamStaff.length || lockingWeek" @click="lockWeek(false)">
                   Unlock this week
                 </button>
+                <button type="button"
+                  class="press ml-auto rounded-md border px-2.5 py-1 text-[12px] font-semibold text-brown"
+                  :class="showLockHistory ? 'border-yellow-deep bg-yellow-soft' : 'border-line bg-white'"
+                  @click="toggleLockHistory">
+                  Lock history
+                </button>
               </div>
               <div class="mt-3 overflow-x-auto">
                 <table class="w-full min-w-[640px] text-left text-[12.5px]">
@@ -250,6 +256,54 @@
                     </tr>
                   </tbody>
                 </table>
+              </div>
+
+              <div v-if="showLockHistory" class="mt-4 overflow-hidden rounded-lg border border-line bg-white">
+                <div class="border-b border-line-soft px-3.5 py-2.5">
+                  <div class="flex items-center gap-2">
+                    <p class="font-display text-[14px] font-bold text-ink">Lock history</p>
+                    <span v-if="lockHistory" class="text-[11.5px] text-muted">{{ lockHistory.length }} event(s)</span>
+                    <UiSpinner v-if="lockHistoryPending" size="xs" class="ml-1" />
+                    <button type="button" class="press ml-auto text-[12px] font-semibold text-brown" @click="showLockHistory = false">Hide</button>
+                  </div>
+                  <div class="mt-2">
+                    <UiCalendarNav
+                      v-model:mode="lockMode"
+                      :label="lockLabel"
+                      :can-go-prev="lockCanGoPrev"
+                      :can-go-next="lockCanGoNext"
+                      :show-today="!lockContainsToday"
+                      :pending="lockHistoryPending"
+                      @prev="lockPrev"
+                      @next="lockNext"
+                      @today="lockGoToday"
+                    />
+                  </div>
+                </div>
+                <div v-if="lockHistoryDenied" class="px-3.5 py-5 text-[12.5px] text-muted">
+                  You don't have permission to view the team's lock history.
+                </div>
+                <div v-else-if="lockHistory && !lockHistory.length && !lockHistoryPending" class="px-3.5 py-5 text-[12.5px] text-muted">
+                  No lock or unlock activity for dates in {{ lockLabel }}.
+                </div>
+                <ul v-else-if="lockHistory" class="divide-y divide-line-soft">
+                  <li v-for="ev in lockHistory" :key="ev.id" class="flex gap-3 px-3.5 py-2.5">
+                    <span class="mt-0.5 w-[104px] shrink-0 text-[11px] tabular-nums text-muted">{{ fmtDateTime(ev.at) }}</span>
+                    <div class="min-w-0 flex-1">
+                      <p class="text-[12.5px] text-ink">{{ ev.summary }}</p>
+                      <p v-if="ev.reason" class="text-[11.5px] text-ink-soft">Reason: {{ ev.reason }}</p>
+                      <p class="text-[11px] text-muted">
+                        {{ ev.actor_name }}
+                        <span v-if="ev.source === 'mcp'" class="text-brown"> · via Claude</span>
+                        <span v-else-if="ev.source === 'api'" class="text-brown"> · via API</span>
+                      </p>
+                    </div>
+                    <span class="mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.3px]"
+                      :class="ev.operation === 'LOCK' ? 'bg-yellow-soft text-brown' : 'bg-surface-sunken text-ink-soft'">
+                      {{ ev.operation === 'LOCK' ? 'locked' : 'unlocked' }}
+                    </span>
+                  </li>
+                </ul>
               </div>
             </template>
           </div>
@@ -622,6 +676,7 @@ async function toggleLock(staffId: string, date: string, currentlyLocked: boolea
       body: { staff_id: staffId, dates: [date], locked: !currentlyLocked },
     })
     await refreshTeamAvail()
+    if (showLockHistory.value) await loadLockHistory()
   } catch (err: any) {
     error.value = err?.data?.message || err?.data?.statusMessage || 'Could not update the lock'
   } finally {
@@ -639,11 +694,58 @@ async function lockWeek(locked: boolean) {
         body: { staff_id: s.id, dates, locked },
       })))
     await refreshTeamAvail()
+    if (showLockHistory.value) await loadLockHistory()
   } catch (err: any) {
     error.value = err?.data?.message || err?.data?.statusMessage || 'Could not update the locks'
   } finally {
     lockingWeek.value = false
   }
+}
+
+// Lock history: independent week (default) / day / month browse of who
+// locked or unlocked availability whose dates fall in the visible range.
+const showLockHistory = ref(false)
+const lockHistoryDenied = ref(false)
+const {
+  mode: lockMode, rangeStart: lockFrom, rangeEnd: lockTo, label: lockLabel,
+  next: lockNext, prev: lockPrev, goToday: lockGoToday,
+  canGoPrev: lockCanGoPrev, canGoNext: lockCanGoNext, containsToday: lockContainsToday,
+} = useDateRangeNav({ initialMode: 'week', initialAnchor: weekStart.value })
+
+const lockHistory = ref<any[] | null>(null)
+const lockHistoryPending = ref(false)
+
+async function loadLockHistory() {
+  lockHistoryPending.value = true
+  lockHistoryDenied.value = false
+  try {
+    const r: any = await $fetch('/api/v1/availability/lock-history', {
+      query: {
+        store_id: storeId.value || undefined,
+        from: lockFrom.value,
+        to: lockTo.value,
+      },
+    })
+    lockHistory.value = r.data || []
+  } catch (err: any) {
+    if ((err?.status || err?.statusCode) === 403) lockHistoryDenied.value = true
+    else error.value = err?.data?.message || err?.data?.statusMessage || 'Could not load lock history'
+  } finally {
+    lockHistoryPending.value = false
+  }
+}
+function toggleLockHistory() {
+  showLockHistory.value = !showLockHistory.value
+  if (showLockHistory.value) loadLockHistory()
+}
+watch([lockFrom, lockTo, storeId], () => {
+  if (showLockHistory.value) loadLockHistory()
+})
+
+function fmtDateTime(iso: string) {
+  return new Date(iso).toLocaleString('en-SG', {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Singapore',
+  })
 }
 
 const { data: setsRes, refresh: refreshSets } = await useFetch<any>('/api/v1/constraint-sets', { lazy: true })
