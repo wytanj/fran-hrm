@@ -5,7 +5,7 @@ summary: Submit availability before the cutoff; swap shifts with a teammate subj
 category: scheduling
 primary_path: /availability
 related_paths: [/swaps, /roster, /roster-builder]
-intent_tags: [availability, preferences, cannot work, unavailable, shift swap, swap shift, cover my shift, exchange shift, cutoff, lock, locked, manager lock, unlock availability, month view, this month, week view]
+intent_tags: [availability, preferences, cannot work, unavailable, shift swap, swap shift, cover my shift, exchange shift, cutoff, lock, locked, manager lock, unlock availability, month view, this month, week view, notification, notifications, bell, who locked my availability]
 sort_order: 40
 ---
 
@@ -26,6 +26,8 @@ Availability locks **7 days ahead** by default. Inside that window the roster is
 ### Manager locks
 
 A supervisor or store manager can also lock specific dates independently of the cutoff — typically the week they have started building a roster for. Those days show as a **manager lock** on Availability, even if they are still outside the 7-day window, and name who locked them.
+
+When a manager locks or unlocks your availability you get an **in-app notification** (the bell in the top bar) — one message for the dates they changed together, not one per day. There is no email. Open the bell to read it; tap the item to go to Availability. A yellow badge on the bell is unread count.
 
 You cannot edit a manager-locked date yourself. Ask your manager to unlock it if you genuinely need to change it; this is not the same as the usual cutoff, so waiting for the window to open will not help. Managers can still edit through a lock themselves.
 

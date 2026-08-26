@@ -20,6 +20,7 @@
           </p>
         </div>
         <NuxtLink to="/help" class="press hidden text-[12px] font-semibold text-muted hover:text-brown sm:block">Help</NuxtLink>
+        <AppNotifications />
         <NuxtLink to="/clock" class="press rounded-full bg-yellow px-3.5 py-1.5 text-[12px] font-semibold text-brown shadow-glow">
           Clock
         </NuxtLink>

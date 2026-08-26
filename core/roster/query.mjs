@@ -3,6 +3,8 @@
 // only returned when explicitly asked for by a manager surface.
 
 import { recordAudit } from '../audit/record.mjs'
+import { createNotification } from '../notifications/record.mjs'
+import { availabilityLockNotification } from './lockCopy.mjs'
 
 const SHIFT_COLS = 'id, roster_id, store_id, staff_id, work_date, start_at, end_at, break_minutes, job_code, template_id, status, notes'
 
@@ -138,6 +140,19 @@ export async function setAvailabilityLocks(db, workspaceId, { staffId, dates, lo
     entity_id: staffId,
     operation: locked ? 'LOCK' : 'UNLOCK',
     after_data: { dates: uniqueDates },
+  })
+
+  // One notification per call, not per date — a week-lock is a single message.
+  // createNotification never throws, so a notify failure cannot undo the lock.
+  const copy = availabilityLockNotification({
+    locked,
+    dates: uniqueDates,
+    actorName: actor.actor_name,
+  })
+  await createNotification(db, {
+    workspace_id: workspaceId,
+    staff_id: staffId,
+    ...copy,
   })
 
   if (!locked) return []
