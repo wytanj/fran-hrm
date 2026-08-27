@@ -5,7 +5,7 @@ summary: Submit availability before the cutoff; swap shifts with a teammate subj
 category: scheduling
 primary_path: /availability
 related_paths: [/swaps, /roster, /roster-builder]
-intent_tags: [availability, preferences, cannot work, unavailable, shift swap, swap shift, cover my shift, exchange shift, cutoff, lock, locked, manager lock, unlock availability, month view, this month, week view, notification, notifications, bell, who locked my availability]
+intent_tags: [availability, preferences, cannot work, unavailable, shift swap, swap shift, cover my shift, exchange shift, cutoff, lock, locked, manager lock, unlock availability, month view, this month, week view, notification, notifications, bell, who locked my availability, greyed out, disabled availability, do not need to submit, full time availability, requires availability]
 sort_order: 40
 ---
 
@@ -18,6 +18,12 @@ sort_order: 40
 3. For each day pick **Can work**, **Prefer**, or **Can't**.
 4. Adjust the time window if you are only free part of the day.
 5. Tap **Submit availability**.
+
+### When the form is greyed out
+
+Some people — usually full-time, who work a fixed pattern — are not asked to submit day-by-day availability. If the Can work / Prefer / Can't controls and the submit button are disabled, your manager has switched this off for you. You can still see the week and any existing or locked entries; you just cannot edit them.
+
+The roster still schedules you as unconstrained (the same as anyone who simply never submitted). This is a per-person flag, not automatic from full-time vs part-time — ask your manager if it should change, for example if you are covering part-time hours for a few months.
 
 ### The cutoff
 

@@ -14,12 +14,15 @@
           @next="next"
           @today="goToday"
         />
-        <UiButton size="sm" :loading="saving" @click="save">Submit availability</UiButton>
+        <UiButton size="sm" :loading="saving" :disabled="!availabilityRequired" @click="save">Submit availability</UiButton>
       </template>
     </UiPageHeader>
 
     <div class="grid gap-6 lg:grid-cols-3">
       <div class="lg:col-span-2">
+        <p v-if="!availabilityRequired" class="mb-3 rounded-lg border border-line bg-surface-sunken px-3.5 py-2.5 text-[12.5px] leading-relaxed text-ink-soft">
+          Your role doesn't need day-by-day availability — ask your manager if this should change.
+        </p>
         <UiTable :columns="[
           { key: 'day', label: 'Day', width: '150px' },
           { key: 'pref', label: 'Preference' },
@@ -27,14 +30,14 @@
           { key: 'locked', label: '', align: 'right', width: '120px' },
         ]">
           <tr v-for="day in days" :key="day.date" class="border-b border-line-soft last:border-0"
-            :class="day.locked ? 'bg-surface-sunken/60' : ''">
+            :class="day.locked || !availabilityRequired ? 'bg-surface-sunken/60' : ''">
             <td class="px-3.5 py-2.5">
               <span class="font-semibold text-ink">{{ day.dow }}</span>
               <span class="ml-1.5 text-[12px] tabular-nums text-muted">{{ day.dayNum }} {{ day.month }}</span>
             </td>
             <td class="px-3.5 py-2">
               <div class="flex gap-1">
-                <button v-for="k in kinds" :key="k.key" type="button" :disabled="day.locked"
+                <button v-for="k in kinds" :key="k.key" type="button" :disabled="day.locked || !availabilityRequired"
                   class="press rounded-md border px-2.5 py-1 text-[12px] font-semibold disabled:opacity-40"
                   :class="day.kind === k.key ? k.active : 'border-line bg-white text-muted'"
                   @click="day.kind = k.key">
@@ -44,10 +47,10 @@
             </td>
             <td class="px-3.5 py-2">
               <div v-if="day.kind !== 'unavailable'" class="flex items-center gap-1.5">
-                <input v-model="day.start" type="time" :disabled="day.locked"
+                <input v-model="day.start" type="time" :disabled="day.locked || !availabilityRequired"
                   class="h-8 rounded-md border border-line bg-white px-2 text-[12.5px] disabled:opacity-40">
                 <span class="text-[11.5px] text-muted">to</span>
-                <input v-model="day.end" type="time" :disabled="day.locked"
+                <input v-model="day.end" type="time" :disabled="day.locked || !availabilityRequired"
                   class="h-8 rounded-md border border-line bg-white px-2 text-[12.5px] disabled:opacity-40">
               </div>
               <span v-else class="text-[12.5px] text-muted">—</span>
@@ -64,9 +67,9 @@
         </UiTable>
 
         <div class="mt-3 flex items-center gap-3">
-          <UiButton size="sm" :loading="saving" @click="save">Submit availability</UiButton>
-          <button class="press text-[12.5px] font-semibold text-muted" @click="setAll('available')">Mark all available</button>
-          <button class="press text-[12.5px] font-semibold text-muted" @click="setAll('unavailable')">Mark all unavailable</button>
+          <UiButton size="sm" :loading="saving" :disabled="!availabilityRequired" @click="save">Submit availability</UiButton>
+          <button class="press text-[12.5px] font-semibold text-muted disabled:opacity-40" :disabled="!availabilityRequired" @click="setAll('available')">Mark all available</button>
+          <button class="press text-[12.5px] font-semibold text-muted disabled:opacity-40" :disabled="!availabilityRequired" @click="setAll('unavailable')">Mark all unavailable</button>
           <p v-if="message" class="text-[12.5px]" :class="messageTone === 'error' ? 'text-danger' : 'text-success'">{{ message }}</p>
         </div>
       </div>
@@ -79,8 +82,11 @@
             <li><strong>Prefer</strong> — you'd like this shift; managers favour these.</li>
             <li><strong>Can't</strong> — you're not available at all.</li>
           </ul>
-          <p class="mt-2 text-[11.5px] text-ink-soft">
+          <p v-if="availabilityRequired" class="mt-2 text-[11.5px] text-ink-soft">
             Part-timers are scheduled from this pool. Submitting nothing makes you less likely to be scheduled.
+          </p>
+          <p v-else class="mt-2 text-[11.5px] text-ink-soft">
+            You are scheduled without day-by-day availability. Existing entries still show so you can see what was last saved.
           </p>
         </div>
 
@@ -138,6 +144,7 @@ const { data: shiftsRes } = await useFetch<any>('/api/v1/shifts', {
   watch: [rangeStart, rangeEnd], default: () => ({ data: [] }), lazy: true,
 })
 const { staff } = useSession()
+const availabilityRequired = computed(() => staff.value?.availability_required !== false)
 const myShifts = computed<any[]>(() =>
   (shiftsRes.value?.data || []).filter((s: any) => s.staff_id === staff.value?.id))
 
@@ -171,10 +178,12 @@ const message = ref('')
 const messageTone = ref<'ok' | 'error'>('ok')
 
 function setAll(kind: string) {
+  if (!availabilityRequired.value) return
   for (const d of days.value) if (!d.locked) d.kind = kind
 }
 
 async function save() {
+  if (!availabilityRequired.value) return
   saving.value = true; message.value = ''
   const editable = days.value.filter((d) => !d.locked)
   if (!editable.length) {

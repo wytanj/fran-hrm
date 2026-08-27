@@ -64,6 +64,7 @@ export async function acceptInvite(db, invite, { authUserId, email, name }) {
     role: invite.role,
     employment_type: 'full_time',
     employment_status: 'active',
+    availability_required: false,
     auth_user_id: authUserId,
     access_method: 'sso',
   }).select().single()
@@ -96,6 +97,7 @@ export async function createWorkspace(db, { authUserId, email, name, orgName }) 
     role: 'hq_admin',
     employment_type: 'full_time',
     employment_status: 'active',
+    availability_required: false,
     auth_user_id: authUserId,
     access_method: 'sso',
   }).select().single()

@@ -102,6 +102,7 @@ export const BUILT_IN_FIELDS = [
 
   { key: 'role', column: 'role', label: 'Access role', type: 'enum', group: 'employment', sensitivity: 'directory', options: ROLE_OPTIONS, sort_order: 10 },
   { key: 'employment_type', column: 'employment_type', label: 'Employment type', type: 'enum', group: 'employment', sensitivity: 'directory', options: EMPLOYMENT_TYPE_OPTIONS, sort_order: 20 },
+  { key: 'availability_required', column: 'availability_required', label: 'Requires availability', type: 'boolean', group: 'employment', sensitivity: 'directory', writable: false, description: 'When off, this person does not fill in day-by-day availability. Full-timers start with this off; a store manager can flip it per person from Roster builder → Team availability without changing anything else about the record.', sort_order: 25 },
   { key: 'employment_status', column: 'employment_status', label: 'Status', type: 'enum', group: 'employment', sensitivity: 'directory', options: EMPLOYMENT_STATUS_OPTIONS, sort_order: 30 },
   { key: 'hired_on', column: 'hired_on', label: 'Hired on', type: 'date', group: 'employment', sensitivity: 'directory', sort_order: 40 },
   { key: 'terminated_on', column: 'terminated_on', label: 'Terminated on', type: 'date', group: 'employment', sensitivity: 'directory', sort_order: 50 },

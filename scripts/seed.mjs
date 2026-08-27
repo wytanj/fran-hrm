@@ -82,12 +82,12 @@ async function main() {
       (id, workspace_id, employee_code, display_name, email, phone, role, employment_type, home_store_id,
        hourly_rate_cents, monthly_salary_cents, pt_weekly_hour_cap, pt_monthly_hour_cap, hired_on, pin_hash,
        gender, race, residency, nationality, nric, date_of_birth, pr_start_date, cpf_applicable,
-       address_line_1, unit_number, postal_code, country)
+       address_line_1, unit_number, postal_code, country, availability_required)
       values (${s.id}, ${WS}, ${s.code}, ${s.name}, ${s.email}, ${s.phone ?? null}, ${s.role}, ${s.type}, ${s.store},
        ${s.rate ?? null}, ${s.salary ?? null}, ${s.capW ?? null}, ${s.capM ?? null}, '2025-01-06', ${pinHash},
        ${s.gender ?? null}, ${s.race ?? null}, ${s.residency ?? null}, ${s.nationality ?? null},
        ${s.nric ?? null}, ${s.dob ?? null}, ${s.prStart ?? null}, ${s.cpf !== false},
-       ${s.addr1 ?? null}, ${s.unit ?? null}, ${s.postal ?? null}, 'SG')
+       ${s.addr1 ?? null}, ${s.unit ?? null}, ${s.postal ?? null}, 'SG', ${s.type !== 'full_time'})
       on conflict (id) do update set display_name = excluded.display_name, role = excluded.role,
         employment_type = excluded.employment_type, home_store_id = excluded.home_store_id,
         hourly_rate_cents = excluded.hourly_rate_cents, monthly_salary_cents = excluded.monthly_salary_cents,

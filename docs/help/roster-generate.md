@@ -5,7 +5,7 @@ summary: Say what cover you need; FranHRM assigns it around leave, availability 
 category: scheduling
 primary_path: /roster-builder
 related_paths: [/roster, /availability]
-intent_tags: [generate roster, auto roster, ai roster, build roster automatically, constraints, coverage, unfilled shifts, roster generator, lock availability, freeze availability, team availability, shift templates, hour blocks, add a shift, 3-hour shift, retire a shift, lock history, who locked availability, unlock history]
+intent_tags: [generate roster, auto roster, ai roster, build roster automatically, constraints, coverage, unfilled shifts, roster generator, lock availability, freeze availability, team availability, shift templates, hour blocks, add a shift, 3-hour shift, retire a shift, lock history, who locked availability, unlock history, requires availability, availability required, full time availability]
 audience: [supervisor, store_manager, area_manager, hq_admin]
 sort_order: 62
 ---
@@ -32,6 +32,8 @@ You describe the *shape* of the week. FranHRM does the assignment.
 **Always enforced, whether you ask or not:** approved *and pending* leave, submitted availability, and part-time weekly hour caps. You do not need to encode these.
 
 **Team availability** on this page shows each person's submitted preference for the week you are planning. Lock a date (or the whole week) before you generate so a late edit cannot invalidate the proposal. Unlock a date if someone genuinely needs to change it. Staff cannot lock or unlock their own dates; you can still edit availability yourself.
+
+Store managers and area managers (not supervisors) can also switch, per person, **Requires availability: On/Off** on that same panel. Full-timers start with this off. Switching it off does not change how they are scheduled — someone with no submitted availability is already treated as unconstrained. Flip it back on if a full-timer is covering part-time hours for a few months and needs to state days they can work. HQ can do this too. The flag is independent of employment type after the person is created, so changing someone from full-time to part-time does not silently flip it.
 
 Locking or unlocking notifies the staff member in-app (their top-bar bell) — one notification for the dates in that action, not one per day. There is no email. **Lock history** on the same panel is a week-by-week log of who locked or unlocked whose dates, and when. Use the calendar arrows to browse; it lists activity whose dates fall in the week you are looking at, newest first.
 

@@ -5,7 +5,7 @@ summary: Each role's permissions are editable, with individual exceptions. One s
 category: account
 primary_path: /permissions
 related_paths: [/team, /connect-claude]
-intent_tags: [permission, permissions, access, cannot publish, not allowed, why can't i, grant access, roster permission, who can publish, role, admin rights, 403, invite staff, invite a teammate, who can invite, dummy staff permission]
+intent_tags: [permission, permissions, access, cannot publish, not allowed, why can't i, grant access, roster permission, who can publish, role, admin rights, 403, invite staff, invite a teammate, who can invite, dummy staff permission, availability required, who must submit availability]
 audience: [supervisor, store_manager, area_manager, hq_admin]
 sort_order: 95
 ---
@@ -34,6 +34,7 @@ The **write** permissions mean *acting on other people*: building the roster, ap
 | People | Create and edit staff records | Add hires, change the profile (salary, address, citizenship, custom fields), reset PINs, terminate. Also the permission that lets someone edit this matrix |
 | People | Create and manage dummy staff | Create, edit, purge and "View as" simulated staff — for modelling a prospective hire. Lighter than the one above: never touches a real record. Store manager and area manager by default |
 | People | Invite a teammate | Invite by email — they join with the assigned role the moment they sign in with Google. Store manager and area manager by default, but never at a role senior to your own |
+| People | Flag who must submit availability | Switch, per person, whether they fill in day-by-day Can work / Prefer / Can't. Full-timers start with this off. Store manager and area manager by default; supervisors cannot. Separate from editing the rest of the staff record |
 | People | View / edit org chart and accountabilities | Seats, reporting lines, the accountability register |
 | Scheduling | View rosters | Published rosters, plus your own availability and swap requests |
 | Scheduling | Build rosters for others | Drafts, shift assignment, deciding swaps, setting anyone's availability |

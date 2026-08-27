@@ -444,6 +444,19 @@
         "description": null
       },
       {
+        "key": "availability_required",
+        "column": "availability_required",
+        "label": "Requires availability",
+        "type": "boolean",
+        "group": "employment",
+        "sensitivity": "directory",
+        "required": false,
+        "writable": false,
+        "create_only": false,
+        "options": [],
+        "description": "When off, this person does not fill in day-by-day availability. Full-timers start with this off; a store manager can flip it per person from Roster builder → Team availability without changing anything else about the record."
+      },
+      {
         "key": "employment_status",
         "column": "employment_status",
         "label": "Status",
@@ -809,6 +822,24 @@
         "detail": "Add hires, edit the full profile (pay, address, citizenship, custom fields), set PINs, terminate. Sensitive."
       },
       {
+        "scope": "staff:dummy",
+        "group": "People",
+        "label": "Create and manage dummy staff",
+        "detail": "Create, edit, purge and \"View as\" simulated (dummy) staff — for modelling a prospective hire or seeding test data. Never touches a real person's record; separate from staff:write on purpose so a store manager can do this without full staff-editing rights."
+      },
+      {
+        "scope": "staff:invite",
+        "group": "People",
+        "label": "Invite a teammate",
+        "detail": "Invite someone to join by email — they get the role assigned on the invite the moment they sign in with Google. Separate from staff:write so a store manager can grow their team without full staff-editing rights. Can never invite at a role senior to their own."
+      },
+      {
+        "scope": "staff:availability_flag",
+        "group": "People",
+        "label": "Flag who must submit availability",
+        "detail": "Switch, per person, whether they need to fill in day-by-day Can work / Prefer / Can't availability. Full-timers start with this off. Separate from staff:write so a store manager can do this without full staff-editing rights. Supervisors cannot."
+      },
+      {
         "scope": "org:read",
         "group": "People",
         "label": "View org chart and accountabilities",
@@ -838,12 +869,18 @@
       ],
       "store_manager": [
         "staff:read",
+        "staff:dummy",
+        "staff:invite",
+        "staff:availability_flag",
         "org:read",
         "org:write"
       ],
       "area_manager": [
         "staff:read",
         "staff:write",
+        "staff:dummy",
+        "staff:invite",
+        "staff:availability_flag",
         "org:read",
         "org:write",
         "reports:cost"
@@ -856,6 +893,9 @@
       "hq_admin": [
         "staff:read",
         "staff:write",
+        "staff:dummy",
+        "staff:invite",
+        "staff:availability_flag",
         "org:read",
         "org:write",
         "reports:cost"

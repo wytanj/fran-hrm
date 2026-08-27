@@ -14,6 +14,7 @@ export interface SessionStaff {
   home_store_id?: string
   home_store?: { id: string; code: string; name: string } | null
   is_dummy?: boolean
+  availability_required?: boolean
 }
 
 export function useSession() {
@@ -72,14 +73,16 @@ export function useSession() {
   // Payroll is finance/HQ only — a specialist gate, not a seniority level (an
   // area_manager is senior but does not do financial processing).
   const isFinanceOrHq = computed(() => ['finance', 'hq_admin'].includes(staff.value?.role || ''))
-  // staff:dummy / staff:invite in the default matrix — store_manager,
-  // area_manager, hq_admin. The real gate is server-side; this only decides
-  // whether to show the button, so a customised matrix can still diverge.
+  // staff:dummy / staff:invite / staff:availability_flag in the default
+  // matrix — store_manager, area_manager, hq_admin. The real gate is
+  // server-side; this only decides whether to show the button, so a
+  // customised matrix can still diverge.
   const canManageDummies = computed(() => ['store_manager', 'area_manager', 'hq_admin'].includes(staff.value?.role || ''))
   const canInvite = computed(() => ['store_manager', 'area_manager', 'hq_admin'].includes(staff.value?.role || ''))
+  const canFlagAvailability = computed(() => ['store_manager', 'area_manager', 'hq_admin'].includes(staff.value?.role || ''))
 
   return {
     staff, ready, refresh, login, logout, isManager, isSupervisor, isAreaManager, isHqAdmin, isFinanceOrHq,
-    canManageDummies, canInvite, viewingAs, viewAs, exitViewAs,
+    canManageDummies, canInvite, canFlagAvailability, viewingAs, viewAs, exitViewAs,
   }
 }

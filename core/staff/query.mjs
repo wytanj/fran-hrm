@@ -45,6 +45,7 @@ export function compactStaff(row, { includeRate = false, includeSensitive = incl
     reports_to_id: row.reports_to_id || null,
     employment_type: row.employment_type,
     employment_status: row.employment_status,
+    availability_required: row.availability_required !== false,
     is_dummy: row.is_dummy || false,
     access_method: row.access_method || 'pin',
     home_store_id: row.home_store_id,

@@ -31,6 +31,11 @@ import {
 } from './fields.mjs'
 import { compactStaff, resolveStaff, resolveStore, STAFF_SELECT } from './query.mjs'
 
+/** Create-time default only. Never applied on employment_type change later. */
+export function defaultAvailabilityRequired(employmentType) {
+  return String(employmentType || '') !== 'full_time'
+}
+
 export function canSeeSensitiveFields(has) {
   if (typeof has === 'function') return has('reports:cost') || has('staff:write')
   if (has == null) return true
@@ -434,6 +439,7 @@ export async function createStaffRecord(db, workspaceId, input, actor = {}) {
   const { randomBytes } = await import('node:crypto')
   const code = (rawCode || `${isDummy ? 'DUMMY' : 'EMP'}-${randomBytes(2).toString('hex').toUpperCase()}`).toUpperCase()
 
+  const employmentType = patch.employment_type || 'full_time'
   const insert = {
     workspace_id: workspaceId,
     employee_code: code,
@@ -441,9 +447,12 @@ export async function createStaffRecord(db, workspaceId, input, actor = {}) {
     is_dummy: isDummy,
     access_method: patch.access_method || 'pin',
     role: patch.role || 'staff',
-    employment_type: patch.employment_type || 'full_time',
+    employment_type: employmentType,
     employment_status: patch.employment_status || 'active',
     cpf_applicable: patch.cpf_applicable === undefined ? true : patch.cpf_applicable,
+    availability_required: patch.availability_required === undefined
+      ? defaultAvailabilityRequired(employmentType)
+      : patch.availability_required,
     ...patch,
   }
   if (input.pin_hash) insert.pin_hash = input.pin_hash
@@ -514,6 +523,26 @@ export async function updateStaffRecord(db, workspaceId, ref, input, actor = {})
     after_data: compactStaff(row, { includeSensitive: true }),
   })
   return profile
+}
+
+export async function setAvailabilityRequired(db, workspaceId, ref, required, actor = {}) {
+  if (typeof required !== 'boolean') throw new Error('required must be true or false')
+  const before = await resolveStaff(db, workspaceId, ref)
+  if (before.availability_required === required) {
+    return compactStaff(before)
+  }
+  const { data, error } = await db.from('staff').update({
+    availability_required: required,
+    updated_at: new Date().toISOString(),
+  }).eq('workspace_id', workspaceId).eq('id', before.id).select(STAFF_SELECT).single()
+  if (error) throw new Error(error.message)
+  await recordAudit(db, {
+    ...actorPayload({ ...actor, workspace_id: workspaceId }),
+    object_type: 'staff', entity_id: before.id, operation: 'UPDATE',
+    before_data: { availability_required: before.availability_required },
+    after_data: { availability_required: data.availability_required },
+  })
+  return compactStaff(data)
 }
 
 export async function deleteStaffRecord(db, workspaceId, ref, { actor = {}, mode = 'auto' } = {}) {
