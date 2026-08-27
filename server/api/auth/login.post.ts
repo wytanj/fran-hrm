@@ -10,6 +10,7 @@ export default defineEventHandler(async (event) => {
       role: staff.role,
       employment_type: staff.employment_type,
       home_store_id: staff.home_store_id,
+      availability_required: staff.availability_required !== false,
     },
   }
 })

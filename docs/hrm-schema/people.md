@@ -59,6 +59,7 @@ STAFF FIELDS (built-in)
   [Employment]
     role (enum, directory) ∈ {staff, supervisor, store_manager, area_manager, finance, hq_admin}
     employment_type (enum, directory) ∈ {full_time, part_time, contractor}
+    availability_required (boolean, directory) — When off, this person does not fill in day-by-day availability. Full-timers start with this off; a store manager can flip it per person from Roster builder → Team availability without changing anything else about the record.
     employment_status (enum, directory) ∈ {active, inactive, terminated}
     hired_on (date, directory)
     terminated_on (date, directory)
@@ -92,6 +93,9 @@ PEOPLE PERMISSIONS
   Sensitive pay/PII readable with: reports:cost or staff:write
     staff:read — View the staff directory
     staff:write — Create and edit staff records
+    staff:dummy — Create and manage dummy staff
+    staff:invite — Invite a teammate
+    staff:availability_flag — Flag who must submit availability
     org:read — View org chart and accountabilities
     org:write — Edit accountabilities and seats
     reports:cost — See pay rates and manpower cost

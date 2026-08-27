@@ -17,6 +17,7 @@ export default defineEventHandler(async (event) => {
       home_store_id: staff.home_store_id,
       home_store: store,
       is_dummy: staff.is_dummy,
+      availability_required: staff.availability_required !== false,
     },
     viewing_as: isViewingAs(event),
   }

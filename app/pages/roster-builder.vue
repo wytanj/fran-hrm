@@ -196,6 +196,7 @@
             </div>
             <p class="mt-1 text-[12.5px] text-muted">
               Freeze the inputs before you generate so a late edit cannot invalidate the roster. Staff cannot change a locked date; you still can.
+              <template v-if="canFlagAvailability"> Switch <strong>Requires availability</strong> per person if they should (or shouldn't) fill in Can work / Prefer / Can't.</template>
             </p>
             <template v-if="showTeamAvail">
               <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -230,6 +231,14 @@
                       <td class="py-1.5 pr-2">
                         <p class="font-semibold leading-tight">{{ s.display_name }}</p>
                         <p class="text-[10.5px] text-muted">{{ s.employee_code }}</p>
+                        <button v-if="canFlagAvailability" type="button"
+                          class="press mt-1 rounded-md border px-1.5 py-0.5 text-[10.5px] font-semibold disabled:opacity-40"
+                          :class="requiresAvailability(s) ? 'border-yellow-deep bg-yellow-soft text-brown' : 'border-line bg-white text-muted'"
+                          :disabled="flaggingId === s.id"
+                          :title="requiresAvailability(s) ? 'This person must submit day-by-day availability. Click to switch off.' : 'This person does not submit day-by-day availability. Click to switch on.'"
+                          @click="toggleAvailabilityRequired(s)">
+                          {{ flaggingId === s.id ? '…' : (requiresAvailability(s) ? 'Requires availability: On' : 'Requires availability: Off') }}
+                        </button>
                       </td>
                       <td v-for="d in weekDays" :key="d.date" class="px-1 py-1 text-center"
                         :class="cellLocked(s.id, d.date) ? 'bg-surface-sunken/60' : ''">
@@ -581,7 +590,7 @@ Dylan     OFF        Opening</pre>
 <script setup lang="ts">
 definePageMeta({ middleware: ['supervisor-only'] })
 
-const { staff } = useSession()
+const { staff, canFlagAvailability } = useSession()
 
 const tabs = [
   { key: 'generate', label: 'Generate' },
@@ -655,6 +664,28 @@ const teamLockCount = computed(() => {
   const ids = new Set(teamStaff.value.map((s: any) => s.id))
   return [...teamLocksByKey.value.keys()].filter((k) => ids.has(k.split('|')[0])).length
 })
+const flagOverrides = ref<Record<string, boolean>>({})
+const flaggingId = ref('')
+function requiresAvailability(s: any) {
+  if (Object.prototype.hasOwnProperty.call(flagOverrides.value, s.id)) return flagOverrides.value[s.id]
+  return s.availability_required !== false
+}
+async function toggleAvailabilityRequired(s: any) {
+  const next = !requiresAvailability(s)
+  flaggingId.value = s.id
+  error.value = ''
+  try {
+    await $fetch(`/api/v1/staff/${s.id}/availability-required`, {
+      method: 'POST',
+      body: { required: next },
+    })
+    flagOverrides.value = { ...flagOverrides.value, [s.id]: next }
+  } catch (err: any) {
+    error.value = err?.data?.message || err?.data?.statusMessage || 'Could not update the availability flag'
+  } finally {
+    flaggingId.value = ''
+  }
+}
 function cellKind(staffId: string, date: string) {
   return teamAvailByKey.value.get(`${staffId}|${date}`)?.kind || ''
 }

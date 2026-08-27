@@ -25,6 +25,19 @@ export default defineEventHandler(async (event) => {
   // Holding roster:write means you plan for others, so the cutoff is yours to override.
   const isManager = ctx.has('roster:write')
 
+  // Self-service only: a person flagged as not needing availability cannot
+  // submit. roster:write holders still can, same as the cutoff and manager
+  // locks. Switching the flag off must not leave a back-door that would
+  // then start constraining them in generate (stated && !ok).
+  if (!isManager) {
+    const { data: target } = await db.from('staff')
+      .select('availability_required')
+      .eq('workspace_id', ctx.workspaceId).eq('id', staffId).maybeSingle()
+    if (target && target.availability_required === false) {
+      throw apiError(403, 'Your role doesn\'t need day-by-day availability — ask your manager if this should change.')
+    }
+  }
+
   const dates: string[] = []
   const rows = entries.map((e: any) => {
     const workDate = assertDate(e.work_date, 'work_date')

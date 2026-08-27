@@ -21,13 +21,15 @@ The profile is grouped on purpose:
 | Group | What's there |
 |---|---|
 | **Identity** | Name, code, gender, date of birth |
-| **Employment** | Access role, FT / PT / contractor, store, hire/term dates, PT caps |
+| **Employment** | Access role, FT / PT / contractor, whether they must submit day-by-day availability (read-only here), store, hire/term dates, PT caps |
 | **Org & hierarchy** | Seat, both titles, departments, who they report to, who reports to them |
 | **Contact** | Email, phone, emergency contact |
 | **Home address** | Street, unit, postal code, country |
 | **Statutory (Singapore)** | NRIC/FIN, race, citizenship (Singaporean / PR / foreigner), nationality, PR start, CPF flag |
 | **Pay** | Monthly salary (salaried), hourly rate (PT), bank |
 | **Custom** | Anything this workspace has added |
+
+**Requires availability** on the employment group is read-only on this page. A store manager or area manager flips it from **Roster builder → Team availability** (a dedicated permission, not the full staff-edit one). Full-timers start with it off; changing employment type later does not silently flip it.
 
 Two titles, same rule as the rest of FranHRM: the **comms title** is what we say; the **internal title** is what payroll and contracts use. They are never mixed in one sentence.
 

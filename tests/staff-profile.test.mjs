@@ -1,11 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  coerceFieldValue, isReservedFieldKey, pickCatalogInput, residencyLabel,
+  BUILT_IN_BY_KEY, coerceFieldValue, isReservedFieldKey, pickCatalogInput, residencyLabel,
   serializeCustomValue, parseCustomValue, validateCustomFieldDef, canSeeSensitivity,
 } from '../core/staff/fields.mjs'
 import { wouldCreateStaffCycle } from '../core/org/query.mjs'
-import { canSeeSensitiveFields } from '../core/staff/profile.mjs'
+import { canSeeSensitiveFields, defaultAvailabilityRequired } from '../core/staff/profile.mjs'
+import { DEFAULT_ROLE_MATRIX, SCOPES } from '../core/permissions/catalog.mjs'
 
 test('citizenship labels', () => {
   assert.equal(residencyLabel('citizen'), 'Singaporean')
@@ -58,6 +59,31 @@ test('sensitivity gate', () => {
   assert.equal(canSeeSensitiveFields(['staff:write']), true)
   assert.equal(canSeeSensitiveFields(['reports:cost']), true)
   assert.equal(canSeeSensitiveFields(null), true)
+})
+
+test('availability_required is a read-only employment field', () => {
+  const f = BUILT_IN_BY_KEY.availability_required
+  assert.ok(f)
+  assert.equal(f.writable, false)
+  assert.equal(f.group, 'employment')
+  assert.equal(f.type, 'boolean')
+  assert.equal(isReservedFieldKey('availability_required'), true)
+})
+
+test('create-time availability_required default follows employment_type', () => {
+  assert.equal(defaultAvailabilityRequired('full_time'), false)
+  assert.equal(defaultAvailabilityRequired('part_time'), true)
+  assert.equal(defaultAvailabilityRequired('contractor'), true)
+  assert.equal(defaultAvailabilityRequired(undefined), true)
+})
+
+test('staff:availability_flag is a store/area manager carve-out, not supervisor', () => {
+  assert.ok(SCOPES.some((s) => s.scope === 'staff:availability_flag'))
+  assert.ok(DEFAULT_ROLE_MATRIX.store_manager.includes('staff:availability_flag'))
+  assert.ok(DEFAULT_ROLE_MATRIX.area_manager.includes('staff:availability_flag'))
+  assert.ok(DEFAULT_ROLE_MATRIX.hq_admin.includes('staff:availability_flag'))
+  assert.equal(DEFAULT_ROLE_MATRIX.supervisor.includes('staff:availability_flag'), false)
+  assert.equal(DEFAULT_ROLE_MATRIX.staff.includes('staff:availability_flag'), false)
 })
 
 test('staff reporting-line cycle', () => {
