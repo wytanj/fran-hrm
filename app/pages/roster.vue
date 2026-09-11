@@ -316,15 +316,22 @@
 <script setup lang="ts">
 const { staff, isManager, isSupervisor } = useSession()
 
+// Deep links from notifications ("Roster published: 5–11 Oct") carry
+// ?store_id&week_start so the page opens on that week, not on today.
+const route = useRoute()
+const linkedWeek = typeof route.query.week_start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(route.query.week_start)
+  ? route.query.week_start : null
+const linkedStore = typeof route.query.store_id === 'string' ? route.query.store_id : ''
+
 const today = todaySG()
 const {
   mode, anchor, rangeStart, rangeEnd, label,
   next, prev, goToday, setAnchor,
   canGoPrev, canGoNext, containsToday,
   minDate, maxDate,
-} = useDateRangeNav({ initialMode: 'week', initialAnchor: mondayOf(today) })
+} = useDateRangeNav({ initialMode: 'week', initialAnchor: mondayOf(linkedWeek || today) })
 
-const storeId = ref(staff.value?.home_store_id || '')
+const storeId = ref(linkedStore || staff.value?.home_store_id || '')
 const error = ref('')
 const busy = ref(false)
 const showAdd = ref(false)
