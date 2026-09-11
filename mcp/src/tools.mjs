@@ -73,7 +73,7 @@ export const toolDefinitions = [
   },
   {
     name: 'help_get',
-    description: 'Read a full help article by slug (use after help_search when you need the whole article). Slugs: clock-in-out, time-corrections, leave-requests, availability-and-swaps, overtime-and-hours, roster-publish, offline-fallback, connect-claude, signing-in, payroll-lock, staff-profiles, org-and-accountability, permissions, hrm-schema.',
+    description: 'Read a full help article by slug (use after help_search when you need the whole article). Slugs: clock-in-out, time-corrections, leave-requests, availability-and-swaps, overtime-and-hours, roster-publish, offline-fallback, connect-claude, signing-in, payroll-lock, staff-profiles, org-and-accountability, permissions, hrm-schema, scheduling-truth-and-telegram.',
     inputSchema: { type: 'object', properties: { slug: { type: 'string' } }, required: ['slug'] },
   },
   {
