@@ -25,6 +25,10 @@ Some people — usually full-time, who work a fixed pattern — are not asked to
 
 The roster still schedules you as unconstrained (the same as anyone who simply never submitted). This is a per-person flag, not automatic from full-time vs part-time — ask your manager if it should change, for example if you are covering part-time hours for a few months.
 
+### The monthly window
+
+Availability for a whole month is collected during the previous month between an **open day** and a **lock day** (defaults: 1st to end of the 7th). After the lock day you cannot change that month yourself; a manager can. You can also submit from the Telegram bot. See **Monthly availability window, the Telegram bot, and the truth panel** for the details and the reminder schedule.
+
 ### The cutoff
 
 Availability locks **7 days ahead** by default. Inside that window the roster is already being planned, so the app will refuse the change and tell you to speak to your manager. Supervisors and above can still edit on your behalf.

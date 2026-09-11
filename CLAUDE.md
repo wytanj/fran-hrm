@@ -42,6 +42,13 @@ Both the web app and MCP resolve through the same functions, so a matrix edit ch
 - `EXPORT_COLUMNS` in `core/roster/export.mjs` is a **round-trip contract**: the rows export re-imports cleanly. Changing a label breaks that — add a column rather than renaming one.
 - Bulk shift insert falls back to per-row on failure so one bad shift doesn't lose the week and the error names the row.
 
+## Scheduling rules, Telegram intake, truth panel
+- **One rulebook.** `config/scheduling_rules.json` (defaults, versioned in git; human copy `docs/SCHEDULING_RULES.md`) overlaid with `workspace_scheduling_rules` (admin edits, migration 031). Always read through `getWorkspaceSchedulingRules()` in `core/scheduling/rules.mjs` — never the file directly and never a hardcoded day. The built-in constant there must match the file (test enforces it) because Vercel has no `config/` on disk.
+- **Availability writes go through `submitAvailability()`** in `core/roster/query.mjs` — the web POST, the Telegram bot and MCP all call it. Every guard (availability_required, 7-day cutoff, rules month-lock, manager locks) lives there once. Don't re-check in a route.
+- **Telegram is intake, not truth.** `core/telegram/`: identity link = employee_code + PIN (bcrypt, same lockout as login) → `staff_telegram_links` (032). Handlers resolve the caller from the link row and then use the same core functions as the web app. Sends are no-ops without `TELEGRAM_BOT_TOKEN`; delivery failures never roll back a write. Setup for J T: `docs/TELEGRAM_BOT_SETUP.md`.
+- Reminders are idempotent via the `notifications` table (one per person per month+token). Cron: `vercel.json` → `GET /api/v1/scheduling/reminders/run` with `CRON_SECRET`.
+- `/scheduling-truth` reports; it never infers. Missing availability stays missing; leave is shown next to it, not converted.
+
 ## Help centre — update it with the code
 `docs/help/*.md` is the source of truth; `npm run help:sync` upserts into `help_articles`; `npm run help:check` fails on drift. The `help_search` MCP tool answers staff policy questions from this content, so **stale docs become wrong answers about someone's pay or leave**. When you change behaviour (a threshold, a cutoff, a workflow step), edit the matching article in the same commit. Adding a new user-facing capability means adding an article, with `intent_tags` covering how a confused person would actually phrase it.
 

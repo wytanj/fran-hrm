@@ -97,6 +97,10 @@ const groups = computed(() => [
       ...(isSupervisor.value ? [{ to: '/roster-builder', label: 'Build / import', icon: '✧' }] : []),
       { to: '/availability', label: 'Availability', icon: '◐' },
       { to: '/swaps', label: 'Shift swaps', icon: '⇄', count: isSupervisor.value ? pendingSwaps.value : 0 },
+      ...(isSupervisor.value ? [
+        { to: '/scheduling-truth', label: 'Scheduling truth', icon: '◉' },
+        { to: '/scheduling-rules', label: 'Scheduling rules', icon: '§' },
+      ] : []),
     ],
   },
   {

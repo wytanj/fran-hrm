@@ -1,5 +1,6 @@
 import { rosterGuardrails } from '../../../../../core/roster/query.mjs'
 import { recordAudit } from '../../../../../core/audit/record.mjs'
+import { notifyRosterPublished } from '../../../../../core/roster/publishNotify.mjs'
 
 // Publish a draft roster. Guardrails (leave clashes, PT caps, OT projection,
 // missing rest days) are computed first; publishing with open warnings
@@ -44,5 +45,12 @@ export default defineEventHandler(async (event) => {
     after_data: { status: 'published', version: updated.version },
     metadata: { action: 'publish', warnings_accepted: warnings.length, shift_count: (shifts || []).length },
   })
-  return { data: updated, warnings, published: true }
+  // Tell everyone on the roster (in-app + Telegram if linked). Side-effect:
+  // never throws, never undoes the publish.
+  const { data: store } = await db.from('stores').select('name').eq('id', roster.store_id).maybeSingle()
+  const notified = await notifyRosterPublished(db, ctx.workspaceId, {
+    roster: updated, shifts: shifts || [], storeName: store?.name || null,
+    actorName: ctx.actorName, isRepublish,
+  })
+  return { data: updated, warnings, published: true, notified }
 })

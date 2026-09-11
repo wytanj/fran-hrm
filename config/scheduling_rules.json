@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "store_ids": ["SGP-BUGIS-001"],
+  "availability": {
+    "open_day_of_prior_month": 1,
+    "lock_day_of_prior_month": 7,
+    "reminders": ["open", "T-3d", "T-1d", "locked"]
+  },
+  "publish": {
+    "target_day_of_prior_month": 15,
+    "guardrails": ["leave_block", "ot_warn", "rest_warn", "pt_cap_warn"]
+  },
+  "cover": {
+    "planned_swap_min_days": 3,
+    "urgent_auto_accept_first_claim": true,
+    "escalate_hours_before_start": 3,
+    "mc_auto_open_cover": true
+  },
+  "pricing": {
+    "default_basis": "staff_hourly",
+    "template_multipliers": { "opening": 1.0, "closing": 1.15 }
+  },
+  "pay": {
+    "v1_basis": "clock_actuals_with_scheduled_fallback"
+  },
+  "telegram": {
+    "pilot": true,
+    "require_linked_identity": true
+  }
+}
