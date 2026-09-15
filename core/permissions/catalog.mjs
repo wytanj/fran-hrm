@@ -44,6 +44,8 @@ export const SCOPES = [
   { scope: 'connector:manage', group: 'Admin', label: 'Manage the Claude connector', detail: 'Generate OAuth credentials, invite staff, disconnect people.' },
 
   { scope: 'pos:sync', group: 'Integrations', label: 'Pull the staff directory for POS', detail: 'Machine-to-machine only; not meaningful for a person.' },
+  { scope: 'pos:verify', group: 'Integrations', label: 'Verify POS register unlock', detail: 'Machine-to-machine: POS sends employee_code + PIN; HRM returns staff session claims. Not for humans.' },
+  { scope: 'pos:disable', group: 'Integrations', label: 'Disable POS access (theft / exit)', detail: 'Clear pos_access, invalidate PIN, end sessions. Store managers (own store), area managers, and HQ — bot confirm path uses this.' },
 ]
 
 export const SCOPE_KEYS = SCOPES.map((s) => s.scope)
@@ -70,8 +72,8 @@ export const DEFAULT_ROLE_MATRIX = {
   // identity check. See core/db/010_permissions_split_self_service.sql.
   staff: ['staff:read', 'org:read', 'roster:read', 'attendance:read', 'leave:read', 'leave:write', 'reports:read'],
   supervisor: ['staff:read', 'org:read', 'roster:read', 'roster:write', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'reports:read', 'zones:read'],
-  store_manager: ['staff:read', 'staff:dummy', 'staff:invite', 'staff:availability_flag', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read', 'zones:read', 'zones:write'],
-  area_manager: ['staff:read', 'staff:write', 'staff:dummy', 'staff:invite', 'staff:availability_flag', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read', 'reports:cost', 'payroll:lock', 'zones:read', 'zones:write'],
+  store_manager: ['staff:read', 'staff:dummy', 'staff:invite', 'staff:availability_flag', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read', 'zones:read', 'zones:write', 'pos:disable'],
+  area_manager: ['staff:read', 'staff:write', 'staff:dummy', 'staff:invite', 'staff:availability_flag', 'org:read', 'org:write', 'roster:read', 'roster:write', 'roster:publish', 'roster:history', 'attendance:read', 'attendance:write', 'leave:read', 'leave:write', 'leave:approve', 'reports:read', 'reports:cost', 'payroll:lock', 'zones:read', 'zones:write', 'pos:disable'],
   // Finance: sees everything relevant to pay, locks payroll, and owns the
   // financial processing (CPF/pay settings + EOR runs). Edits no rosters/staff
   // and approves no leave.
@@ -84,7 +86,7 @@ export const DEFAULT_ROLE_MATRIX = {
 export const SENSITIVE_SCOPES = [
   'staff:write', 'org:write', 'roster:publish', 'attendance:write',
   'leave:approve', 'reports:cost', 'payroll:lock', 'payroll:settings',
-  'payroll:process', 'connector:manage', 'hrm_schema:write',
+  'payroll:process', 'connector:manage', 'hrm_schema:write', 'pos:disable',
 ]
 
 export function scopeMeta(scope) {
