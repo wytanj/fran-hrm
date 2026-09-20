@@ -99,6 +99,13 @@ export const BUILT_IN_FIELDS = [
   { key: 'nationality', column: 'nationality', label: 'Nationality', type: 'text', group: 'statutory', sensitivity: 'pii', sort_order: 40 },
   { key: 'pr_start_date', column: 'pr_start_date', label: 'PR start date', type: 'date', group: 'statutory', sensitivity: 'pii', description: 'Required for PR so CPF can pick year 1 / year 2 / year 3.', sort_order: 50 },
   { key: 'cpf_applicable', column: 'cpf_applicable', label: 'CPF applicable', type: 'boolean', group: 'statutory', sensitivity: 'pii', sort_order: 60 },
+  { key: 'religion', column: 'religion', label: 'Religion', type: 'text', group: 'statutory', sensitivity: 'pii', description: 'Used for SHG (MBMF = Muslim). Do not infer from race alone.', sort_order: 70 },
+  { key: 'shg_opt_out', column: 'shg_opt_out', label: 'SHG opt-out', type: 'boolean', group: 'statutory', sensitivity: 'pii', description: 'When true, skip Self-Help Group agency on CPF ezPay / previews.', sort_order: 80 },
+  { key: 'pr_cpf_type', column: 'pr_cpf_type', label: 'PR CPF type', type: 'enum', group: 'statutory', sensitivity: 'pii', options: [{ value: 'FG', label: 'Full / Graduated (F/G)' }, { value: 'GG', label: 'Graduated / Graduated (G/G)' }], description: 'ezPay Type column for PRs.', sort_order: 90 },
+  { key: 'work_pass_type', column: 'work_pass_type', label: 'Work pass type', type: 'text', group: 'statutory', sensitivity: 'pii', description: 'EP / S Pass / WP / …', sort_order: 100 },
+  { key: 'work_pass_no', column: 'work_pass_no', label: 'Work pass no.', type: 'text', group: 'statutory', sensitivity: 'pii', sort_order: 110 },
+  { key: 'work_pass_expires_on', column: 'work_pass_expires_on', label: 'Work pass expiry', type: 'date', group: 'statutory', sensitivity: 'pii', sort_order: 120 },
+
 
   { key: 'role', column: 'role', label: 'Access role', type: 'enum', group: 'employment', sensitivity: 'directory', options: ROLE_OPTIONS, sort_order: 10 },
   { key: 'employment_type', column: 'employment_type', label: 'Employment type', type: 'enum', group: 'employment', sensitivity: 'directory', options: EMPLOYMENT_TYPE_OPTIONS, sort_order: 20 },
@@ -131,6 +138,9 @@ export const BUILT_IN_FIELDS = [
   { key: 'hourly_rate_cents', column: 'hourly_rate_cents', label: 'Hourly rate', type: 'money_cents', group: 'compensation', sensitivity: 'compensation', description: 'Hourly rate, integer cents. For part-time.', sort_order: 20 },
   { key: 'bank_name', column: 'bank_name', label: 'Bank', type: 'text', group: 'compensation', sensitivity: 'compensation', sort_order: 30 },
   { key: 'bank_account_no', column: 'bank_account_no', label: 'Bank account', type: 'text', group: 'compensation', sensitivity: 'compensation', sort_order: 40 },
+  { key: 'bank_account_name', column: 'bank_account_name', label: 'Bank account name', type: 'text', group: 'compensation', sensitivity: 'compensation', description: 'Account holder name as at the bank (may differ from display name).', sort_order: 50 },
+  { key: 'bank_bic', column: 'bank_bic', label: 'Bank BIC', type: 'text', group: 'compensation', sensitivity: 'compensation', description: 'BIC / Aspire bank code for payroll CSV.', sort_order: 60 },
+
 ]
 
 export const BUILT_IN_BY_KEY = Object.fromEntries(BUILT_IN_FIELDS.map((f) => [f.key, f]))

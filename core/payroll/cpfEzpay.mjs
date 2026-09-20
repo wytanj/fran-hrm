@@ -1,3 +1,4 @@
+import { resolveShgAgency } from './statutory.mjs'
 // Generate the CPF EZPay upload CSV from FranHRM's own payroll data (payslips +
 // staff CPF fields) for a month. Wages come from the month's payslips; identity
 // and residency from staff. The Self-Help Group amount is left blank for CPF
@@ -72,7 +73,7 @@ export async function generateCpfEzpay(db, workspaceId, { month }) {
   const monthEnd = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).toISOString().slice(0, 10)
 
   const { data: slips, error } = await db.from('payslips')
-    .select('basic_salary_cents, allowances, additions, overtime_pay_cents, employee_name, staff:staff_id(display_name, nric, date_of_birth, race, residency, cpf_applicable, pr_start_date, hired_on, terminated_on)')
+    .select('basic_salary_cents, allowances, additions, overtime_pay_cents, employee_name, staff:staff_id(display_name, nric, date_of_birth, race, residency, cpf_applicable, pr_start_date, hired_on, terminated_on, religion, shg_opt_out, pr_cpf_type)')
     .eq('workspace_id', workspaceId).neq('status', 'draft')
     .gte('period_end', monthStart).lte('period_end', monthEnd)
   if (error) throw new Error(error.message)
@@ -89,10 +90,10 @@ export async function generateCpfEzpay(db, workspaceId, { month }) {
     const aw = sum(p.additions)
     rows.push([
       s.nric, name, dollars(ow), dollars(aw),
-      '', shgFund(s.race),
+      '', resolveShgAgency(s) || '',
       citizenshipCode(s, monthEnd),
       s.residency === 'pr' ? fmtDob(s.pr_start_date) : '',
-      '',
+      s.residency === 'pr' ? (s.pr_cpf_type || '') : '',
       employmentStatus(s, month),
       inMonth(s.terminated_on, month) ? fmtDob(s.terminated_on) : '',
       fmtDob(s.date_of_birth),
