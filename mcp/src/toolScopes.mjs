@@ -76,6 +76,7 @@ export const TOOL_SCOPE_CATALOG = {
   shift_template_retire: { scope: 'roster:write', action: 'Retire a shift block (soft delete)', privileged: true },
 
   // Payroll control plane — CPF/EOR pay settings. Finance/HQ only; writes logged.
+  payroll_earnings_month: { scope: 'payroll:process', action: 'Month earnings estimate (OW/AW + CPF/SHG preview) for one staff member' },
   payroll_compute: { scope: 'payroll:process', action: 'Prorate a monthly salary for approved no-pay leave / sabbatical in a period' },
   payroll_settings_get: { scope: 'payroll:settings', action: 'Read CPF/EOR pay settings' },
   payroll_settings_update: { scope: 'payroll:settings', action: 'Update CPF/EOR pay settings (logged to the control plane)', privileged: true },
