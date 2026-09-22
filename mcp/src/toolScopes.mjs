@@ -68,6 +68,8 @@ export const TOOL_SCOPE_CATALOG = {
   roster_export: { scope: 'roster:read', action: 'Export a roster for Sheets, Airtable, CSV or markdown' },
   roster_import_preview: { scope: 'roster:write', action: 'Parse a pasted roster sheet, map its columns, dry-run', privileged: true },
   roster_import_commit: { scope: 'roster:write', action: 'Commit a previewed import into draft roster(s)', privileged: true },
+  staff_master_import_diff: { scope: 'staff:write', action: 'Dry-run staff master CSV/TSV diff (identity + pay rates; no hours write)', privileged: true },
+  staff_master_import_commit: { scope: 'staff:write', action: 'Apply a previously previewed staff master import after explicit confirm', privileged: true },
   constraint_set_list: { scope: 'roster:read', action: 'Saved reusable rostering constraint sets' },
   constraint_set_save: { scope: 'roster:write', action: 'Save a reusable constraint set', privileged: true },
   shift_template_list: { scope: 'roster:read', action: 'Named shift blocks a store can use as roster coverage' },

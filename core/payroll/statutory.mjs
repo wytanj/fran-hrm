@@ -125,6 +125,37 @@ export async function appendStatutoryRate(db, workspaceId, row, { actorStaffId =
 }
 
 /** Which SHG agency applies for this staff (null if opted out / none). */
+/**
+ * Resolve SHG employee contribution from payload.bands by wage (OW cents).
+ * Accepted band shapes (first match wins; keep bands ordered low→high):
+ *   { min_cents, max_cents?, employee_cents }
+ *   { from_cents, to_cents?, amount_cents }
+ *   { min, max?, amount }  // amount in dollars when not *_cents
+ * max/to exclusive when present; omit max for open-ended top band.
+ * Returns null when bands missing/empty or wage matches none.
+ */
+export function resolveShgBandCents(bands, wageCents) {
+  if (!Array.isArray(bands) || bands.length === 0) return null
+  const wage = Math.max(0, Math.round(Number(wageCents) || 0))
+  for (const raw of bands) {
+    if (!raw || typeof raw !== "object") continue
+    const min = Number(raw.min_cents ?? raw.from_cents ?? raw.min ?? 0)
+    const maxRaw = raw.max_cents ?? raw.to_cents ?? raw.max
+    const max = maxRaw == null || maxRaw === "" ? Number.POSITIVE_INFINITY : Number(maxRaw)
+    let amt = raw.employee_cents ?? raw.amount_cents ?? raw.amount ?? raw.cents
+    if (amt == null) continue
+    amt = Number(amt)
+    if (raw.employee_cents == null && raw.amount_cents == null && raw.cents == null && raw.amount != null && amt > 0 && amt < 1000) {
+      amt = Math.round(amt * 100)
+    } else {
+      amt = Math.round(amt)
+    }
+    if (!(wage >= min && wage < max)) continue
+    return amt
+  }
+  return null
+}
+
 export function resolveShgAgency(staff) {
   if (staff?.shg_opt_out) return null
   const religion = String(staff?.religion || '').toLowerCase()
@@ -221,14 +252,23 @@ export async function previewStatutory(db, workspaceId, {
     const shgRow = await lookupStatutoryRate(db, workspaceId, {
       kind: 'shg_rate', key: shgAgency.toLowerCase(), onDate,
     })
-    if (shgRow?.payload?.employee_cents != null) {
+        if (shgRow?.payload?.employee_cents != null) {
       shgCents = Math.round(Number(shgRow.payload.employee_cents))
       shgSource = 'timeline'
     } else if (shgRow?.payload?.pct_of_ow != null) {
       shgCents = Math.round(ow * Number(shgRow.payload.pct_of_ow) / 100)
       shgSource = 'timeline'
+    } else if (Array.isArray(shgRow?.payload?.bands) && shgRow.payload.bands.length) {
+      const banded = resolveShgBandCents(shgRow.payload.bands, ow)
+      if (banded != null) {
+        shgCents = banded
+        shgSource = 'timeline'
+      } else {
+        shgCents = 0
+        shgSource = 'unconfigured'
+      }
     } else {
-      // Preview stub: $0 until finance seeds SHG bands — do not invent wage bands.
+      // Preview stub: $0 until finance seeds employee_cents / pct_of_ow / bands.
       shgCents = 0
       shgSource = 'unconfigured'
     }

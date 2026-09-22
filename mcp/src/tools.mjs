@@ -14,6 +14,7 @@ import {
   canSeeSensitiveFields, createStaffRecord, deleteCustomField, deleteStaffRecord,
   getStaffProfile, listCatalog, updateStaffRecord, upsertCustomField,
 } from '../../core/staff/profile.mjs'
+import { staffMasterImportDiff, staffMasterImportCommit } from '../../core/staff/masterImport.mjs'
 import {
   compactVersion, ensureInForce, getVersion, listVersions, presentVersion, publishVersion, snapshotCurrent,
 } from '../../core/hrm-schema/store.mjs'
@@ -614,6 +615,32 @@ export const toolDefinitions = [
         save_mapping_as: { type: 'string', description: 'e.g. "Orchard Google Sheet"' },
       },
       required: ['batch_id'],
+    },
+  },
+  {
+    name: 'staff_master_import_diff',
+    description:
+      'Draft-first staff master import. Paste CSV/TSV (header row) of staff identity + pay rates. Diffs against live workspace staff (match employee_code, then email). Returns added/changed/removed + validation errors. NOTHING is written. Hours columns are ignored — hours SoT is POS QR → time_entries. After human approve, call staff_master_import_commit with returned ops + draft_hash and confirm=true.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'CSV or TSV staff master including header row' },
+      },
+      required: ['text'],
+    },
+  },
+  {
+    name: 'staff_master_import_commit',
+    description:
+      'PRIVILEGED WRITE: apply a staff_master_import_diff result. Requires confirm=true and the exact ops + draft_hash from the diff. Does not terminate removed-from-file staff. Does not write hours.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ops: { type: 'array', description: 'ops array echoed from staff_master_import_diff' },
+        draft_hash: { type: 'string' },
+        confirm: { type: 'boolean', description: 'Must be true after explicit human approve' },
+      },
+      required: ['ops', 'draft_hash', 'confirm'],
     },
   },
   {
@@ -1510,6 +1537,28 @@ export async function handleTool(name, args = {}) {
           { ...result, next_allowed_actions: ['roster_get', 'roster_export', 'roster_publish'] })
       }
 
+      case 'staff_master_import_diff': {
+        requireScope('staff:write')
+        if (!a.text) throw new Error('text is required — paste the staff master as CSV or tab-separated text.')
+        const result = await staffMasterImportDiff(db(), ws(), { text: a.text })
+        return jsonResult(result)
+      }
+
+      case 'staff_master_import_commit': {
+        requireScope('staff:write')
+        const result = await staffMasterImportCommit(db(), ws(), {
+          ops: a.ops,
+          draft_hash: a.draft_hash,
+          confirm: a.confirm,
+          actor: { kind: 'agent', staffId: getMcpActorStaffId(), name: getMcpClientName() },
+        })
+        return withAudit(name, requestId,
+          {
+            object_type: 'staff', entity_id: null, operation: 'ACTION',
+            after_data: { written: result.written }, metadata: { action: 'staff_master_import_commit' },
+          },
+          result)
+      }
       case 'shift_template_list': {
         requireScope('roster:read')
         const store = a.store ? await resolveStore(db(), ws(), a.store) : null
