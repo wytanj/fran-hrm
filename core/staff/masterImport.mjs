@@ -416,13 +416,20 @@ export async function staffMasterImportCommit(db, workspaceId, { ops, draft_hash
   for (const op of ops) {
     if (op.op === "create") {
       const created = await createStaffRecord(db, workspaceId, op.patch, actor || {})
+      const newId = created?.id || created?.staff?.id || null
+      if (newId && op.patch.payroll_eligible_from) {
+        await db.from('staff').update({ payroll_eligible_from: op.patch.payroll_eligible_from }).eq('id', newId)
+      }
       results.push({
         op: "create",
-        staff_id: created?.id || created?.staff?.id || null,
+        staff_id: newId,
         employee_code: op.patch.employee_code,
       })
     } else if (op.op === "update") {
       const updated = await updateStaffRecord(db, workspaceId, op.staff_id, op.patch, actor || {})
+      if (op.patch.payroll_eligible_from) {
+        await db.from('staff').update({ payroll_eligible_from: op.patch.payroll_eligible_from }).eq('id', op.staff_id)
+      }
       results.push({
         op: "update",
         staff_id: op.staff_id,
