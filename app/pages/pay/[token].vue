@@ -14,8 +14,8 @@
     </UiCard>
 
     <template v-else-if="snap">
-      <!-- Live estimate -->
-      <UiCard tone="surface" class="mb-4">
+      <!-- Live estimate — only while active + payroll-eligible -->
+      <UiCard v-if="showLiveEstimate" tone="surface" class="mb-4">
         <div class="flex items-start justify-between gap-3">
           <div>
             <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">Live estimate</p>
@@ -69,6 +69,13 @@
         </div>
       </UiCard>
 
+      <UiCard v-else-if="isLeft" tone="surface" class="mb-4">
+        <p class="text-[13px] font-semibold text-ink">{{ leftBannerTitle }}</p>
+        <p class="mt-1 text-[12.5px] text-muted">
+          Showing issued and acknowledged payslips only. Live estimate returns when employment is active again.
+        </p>
+      </UiCard>
+
       <!-- Payslip history -->
       <UiCard tone="surface">
         <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">Payslip history</p>
@@ -114,12 +121,26 @@ watchEffect(() => {
 })
 
 const estimate = computed(() => snap.value?.estimate || null)
+const showLiveEstimate = computed(() => !!(snap.value?.live_eligible && estimate.value))
+const isLeft = computed(() => {
+  const s = snap.value?.staff?.employment_status
+  return s === 'terminated' || s === 'inactive'
+})
+const leftBannerTitle = computed(() => {
+  const s = snap.value?.staff?.employment_status
+  if (s === 'inactive') return 'On break — history only'
+  if (s === 'terminated') return 'Employment ended — history only'
+  return 'Live estimate unavailable'
+})
 const cpf = computed(() => estimate.value?.statutory_preview?.cpf || null)
 const shg = computed(() => estimate.value?.statutory_preview?.shg || null)
 
 const employmentLabel = computed(() => {
   const t = snap.value?.staff?.employment_type
-  return ({ full_time: 'Full-time', part_time: 'Part-time', contractor: 'Contractor' } as Record<string, string>)[t] || t || ''
+  const type = ({ full_time: 'Full-time', part_time: 'Part-time', contractor: 'Contractor' } as Record<string, string>)[t] || t || ''
+  const s = snap.value?.staff?.employment_status
+  const status = ({ active: '', inactive: 'On break', terminated: 'Terminated' } as Record<string, string>)[s] || ''
+  return [type, status].filter(Boolean).join(' · ')
 })
 const basisLabel = computed(() => {
   const b = estimate.value?.period?.basis

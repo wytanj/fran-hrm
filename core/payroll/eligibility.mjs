@@ -18,7 +18,7 @@ function minDate(a, b) {
   return aa <= bb ? aa : bb
 }
 
-/** Resolve eligibility start: explicit payroll_eligible_from → hire_gates → hired_on. */
+/** Resolve eligibility start: explicit payroll_eligible_from -> hire_gates -> hired_on. */
 export function resolveEligibleFrom(staff, gates = null) {
   return ymd(staff?.payroll_eligible_from)
     || ymd(gates?.payroll_eligible_from)
@@ -57,7 +57,17 @@ export async function loadHireGates(db, workspaceId, staffId) {
 
 /** True when gates row exists and any required gate date is still null. */
 export function gatesBlockPay(gates) {
-  if (!gates) return false // no row yet — rely on payroll_eligible_from / hired_on backfill
+  if (!gates) return false // no row yet - rely on payroll_eligible_from / hired_on backfill
   const need = ['offer_accepted_on', 'docs_verified_on', 'nric_verified_on', 'start_on', 'first_store_presence_on']
   return need.some((k) => !gates[k])
+}
+
+/** True when asOf is on/after resolveEligibleFrom and hire gates are not blocking. */
+export function isPayrollEligibleAsOf(staff, asOf, gates = null) {
+  if (gatesBlockPay(gates)) return false
+  const from = resolveEligibleFrom(staff, gates)
+  if (!from) return false
+  const day = ymd(asOf)
+  if (!day) return false
+  return day >= from
 }

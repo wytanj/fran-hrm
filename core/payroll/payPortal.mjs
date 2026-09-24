@@ -1,14 +1,32 @@
 // Staff pay portal — stable magic-link token, payslip history, live estimate.
 // No WhatsApp. Token is long-lived; rotate only via revokePayPortalToken().
+//
+// JT/CoS: same staff_id forever (leave/rejoin = employment_status). Token stays
+// valid for active, inactive (soft break), and terminated (formal exit). Live
+// estimate + month preview only when status === 'active' AND payroll-eligible
+// (existing payroll_eligible_from / hire gates — not a new column).
 
 import { randomBytes } from 'node:crypto'
 import { listMyPayslips, getPayslipByToken } from './payslips.mjs'
 import { liveEarningsEstimate, earningsForMonth, loadStaff } from './earnings.mjs'
+import { loadHireGates, isPayrollEligibleAsOf } from './eligibility.mjs'
 
 const TOKEN_RE = /^pp_[A-Za-z0-9_-]{20,}$/
 
+function todaySgt() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Singapore', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date())
+}
+
 export function generatePayPortalToken() {
   return `pp_${randomBytes(24).toString('base64url')}`
+}
+
+/** Live estimate / month preview: active + payroll-eligible (existing helper). */
+export function isPayPortalLiveEligible(staff, { asOf = null, gates = null } = {}) {
+  if (!staff || staff.employment_status !== 'active') return false
+  return isPayrollEligibleAsOf(staff, asOf || todaySgt(), gates)
 }
 
 export async function ensurePayPortalToken(db, workspaceId, staffId) {
@@ -26,6 +44,7 @@ export async function ensurePayPortalToken(db, workspaceId, staffId) {
   return { token, created: true, staff: { ...staff, ...data } }
 }
 
+/** Only kill switch for magic link. Terminate / soft-break must NOT call this. */
 export async function revokePayPortalToken(db, workspaceId, staffId) {
   const token = generatePayPortalToken()
   const { data, error } = await db.from('staff').update({
@@ -37,31 +56,47 @@ export async function revokePayPortalToken(db, workspaceId, staffId) {
   return { token: data.pay_portal_token, rotated: true }
 }
 
+/**
+ * Resolve staff by magic-link token. Valid for active, inactive, and terminated
+ * as long as the token matches TOKEN_RE (not revoked/missing). Does NOT null out
+ * on employment_status.
+ */
 export async function resolvePayPortalStaff(db, token) {
   if (!TOKEN_RE.test(String(token || ''))) return null
   const { data, error } = await db.from('staff')
-    .select('id, workspace_id, employee_code, display_name, employment_type, employment_status, pay_portal_token')
+    .select('id, workspace_id, employee_code, display_name, employment_type, employment_status, hired_on, payroll_eligible_from, pay_portal_token')
     .eq('pay_portal_token', token)
     .maybeSingle()
   if (error) throw new Error(error.message)
-  if (!data || data.employment_status === 'terminated') return null
+  if (!data) return null
   return data
 }
 
 export async function payPortalSnapshot(db, token, { settings = {} } = {}) {
   const gate = await resolvePayPortalStaff(db, token)
   if (!gate) return null
+
+  const gates = gate.employment_status === 'active'
+    ? await loadHireGates(db, gate.workspace_id, gate.id)
+    : null
+  const liveEligible = isPayPortalLiveEligible(gate, { gates })
+
   const [estimate, payslips] = await Promise.all([
-    liveEarningsEstimate(db, gate.workspace_id, gate.id, { settings }),
+    liveEligible
+      ? liveEarningsEstimate(db, gate.workspace_id, gate.id, { settings })
+      : Promise.resolve(null),
     listMyPayslips(db, gate.workspace_id, gate.id),
   ])
+
   return {
     staff: {
       id: gate.id,
       employee_code: gate.employee_code,
       display_name: gate.display_name,
       employment_type: gate.employment_type,
+      employment_status: gate.employment_status,
     },
+    live_eligible: liveEligible,
     estimate,
     payslips: (payslips || []).map((p) => ({
       id: p.id,
@@ -91,5 +126,9 @@ export async function payPortalPayslip(db, portalToken, payslipToken) {
 export async function payPortalMonth(db, portalToken, month, { settings = {} } = {}) {
   const gate = await resolvePayPortalStaff(db, portalToken)
   if (!gate) return null
+  const gates = gate.employment_status === 'active'
+    ? await loadHireGates(db, gate.workspace_id, gate.id)
+    : null
+  if (!isPayPortalLiveEligible(gate, { gates })) return null
   return earningsForMonth(db, gate.workspace_id, gate.id, month, { settings })
 }
