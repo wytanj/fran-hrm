@@ -14,6 +14,7 @@ import {
   canSeeSensitiveFields, createStaffRecord, deleteCustomField, deleteStaffRecord,
   getStaffProfile, listCatalog, updateStaffRecord, upsertCustomField,
 } from '../../core/staff/profile.mjs'
+import { staffMasterImportDiff, staffMasterImportCommit } from '../../core/staff/masterImport.mjs'
 import {
   compactVersion, ensureInForce, getVersion, listVersions, presentVersion, publishVersion, snapshotCurrent,
 } from '../../core/hrm-schema/store.mjs'
@@ -617,6 +618,32 @@ export const toolDefinitions = [
     },
   },
   {
+    name: 'staff_master_import_diff',
+    description:
+      'Draft-first staff master import. Paste CSV/TSV (header row) of staff identity + pay rates. Diffs against live workspace staff (match employee_code, then email). Returns added/changed/removed + validation errors. NOTHING is written. Hours columns are ignored — hours SoT is POS QR → time_entries. After human approve, call staff_master_import_commit with returned ops + draft_hash and confirm=true.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'CSV or TSV staff master including header row' },
+      },
+      required: ['text'],
+    },
+  },
+  {
+    name: 'staff_master_import_commit',
+    description:
+      'PRIVILEGED WRITE: apply a staff_master_import_diff result. Requires confirm=true and the exact ops + draft_hash from the diff. Does not terminate removed-from-file staff. Does not write hours.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ops: { type: 'array', description: 'ops array echoed from staff_master_import_diff' },
+        draft_hash: { type: 'string' },
+        confirm: { type: 'boolean', description: 'Must be true after explicit human approve' },
+      },
+      required: ['ops', 'draft_hash', 'confirm'],
+    },
+  },
+  {
     name: 'shift_template_list',
     description: 'Named shift blocks ("hour blocks") a store can use as roster_generate coverage — e.g. "Opening 09:30-18:30" or an ad hoc 3-hour holiday block. A store\'s usable blocks are the shared ones (no store) plus its own. Pass include_inactive=true to also see retired ones.',
     inputSchema: {
@@ -698,6 +725,19 @@ export const toolDefinitions = [
         monthly_basic_cents: { type: 'number', description: 'Full monthly basic salary, in cents' },
       },
       required: ['staff', 'period_start', 'period_end', 'monthly_basic_cents'],
+    },
+  },
+  {
+    name: 'payroll_earnings_month',
+    description:
+      'Month earnings estimate for one staff member (ordinary wages, store OT as additional wages, CPF/SHG/SDL preview). Same JSON shape as the staff pay portal and fran-bird. Finance/HQ, or the staff member themselves. ESTIMATE only — not a payslip.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        staff: STAFF_REF,
+        month: { type: 'string', description: 'YYYY-MM (defaults to current SGT month)' },
+      },
+      required: ['staff'],
     },
   },
   {
@@ -1497,6 +1537,28 @@ export async function handleTool(name, args = {}) {
           { ...result, next_allowed_actions: ['roster_get', 'roster_export', 'roster_publish'] })
       }
 
+      case 'staff_master_import_diff': {
+        requireScope('staff:write')
+        if (!a.text) throw new Error('text is required — paste the staff master as CSV or tab-separated text.')
+        const result = await staffMasterImportDiff(db(), ws(), { text: a.text })
+        return jsonResult(result)
+      }
+
+      case 'staff_master_import_commit': {
+        requireScope('staff:write')
+        const result = await staffMasterImportCommit(db(), ws(), {
+          ops: a.ops,
+          draft_hash: a.draft_hash,
+          confirm: a.confirm,
+          actor: { kind: 'agent', staffId: getMcpActorStaffId(), name: getMcpClientName() },
+        })
+        return withAudit(name, requestId,
+          {
+            object_type: 'staff', entity_id: null, operation: 'ACTION',
+            after_data: { written: result.written }, metadata: { action: 'staff_master_import_commit' },
+          },
+          result)
+      }
       case 'shift_template_list': {
         requireScope('roster:read')
         const store = a.store ? await resolveStore(db(), ws(), a.store) : null
@@ -1590,6 +1652,15 @@ export async function handleTool(name, args = {}) {
           staffId: staff.id, periodStart: a.period_start, periodEnd: a.period_end,
           monthlyBasicCents: Number(a.monthly_basic_cents) || 0,
         }))
+      }
+
+      case 'payroll_earnings_month': {
+        requireScope('payroll:process')
+        const staff = await resolveStaff(db(), ws(), a.staff)
+        const month = a.month || new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Singapore', year: 'numeric', month: '2-digit' }).format(new Date())
+        const { earningsForMonth } = await import('../../core/payroll/earnings.mjs')
+        const settings = await getSettings(db(), ws())
+        return jsonResult(await earningsForMonth(db(), ws(), staff.id, month, { settings }))
       }
 
       case 'payroll_settings_get': {

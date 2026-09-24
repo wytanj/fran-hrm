@@ -15,6 +15,7 @@ const ROUTING = `## Intent → tool routing
 | Freeze someone's availability before/while building a roster | availability_lock (needs roster:write) — pass locked=false to unlock |
 | Add / retire a shift block ("3-hour holiday block", "retire the closing shift") | shift_template_create / shift_template_update / shift_template_retire (needs roster:write) — shift_template_list first for existing ids |
 | "How many hours did X work between A and B?" | hours_worked (accepts employee code, name, or id) |
+| "What will X earn this month?" / live pay estimate | **payroll_earnings_month** |
 | Store-level hours/OT/lateness overview | attendance_summary |
 | Who is working when / this week's schedule | roster_get (store + week_start Monday) or shifts_list (per staff) |
 | Late/no-show/OT incidents | attendance_flags_list |
