@@ -1,8 +1,8 @@
 import { resolveShgAgency } from './statutory.mjs'
-// Generate the CPF EZPay upload CSV from FranHRM's own payroll data (payslips +
-// staff CPF fields) for a month. Wages come from the month's payslips; identity
-// and residency from staff. The Self-Help Group amount is left blank for CPF
-// EZPay to compute from wages + the named fund.
+import { earningsForMonth } from './earnings.mjs'
+// Generate the CPF EZPay upload CSV from FranHRM's earnings engine +
+// staff CPF fields for a month (same path as Aspire). Issue/payslips are
+// separate — for My payslips after payday.
 
 // Exact template header (order + labels matter for the EZPay upload).
 export const CPF_EZPAY_HEADER = [
@@ -24,7 +24,6 @@ export const CPF_EZPAY_HEADER = [
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const RACE_TO_SHG = { chinese: 'CDAC', malay: 'MBMF', muslim: 'MBMF', indian: 'SINDA', eurasian: 'ECF' }
 
-const sum = (arr) => (Array.isArray(arr) ? arr : []).reduce((s, i) => s + (Number(i?.cents) || 0), 0)
 const dollars = (cents) => ((Number(cents) || 0) / 100).toFixed(2)
 const shgFund = (race) => RACE_TO_SHG[String(race || '').toLowerCase()] || ''
 
@@ -69,25 +68,36 @@ function csvCell(v) {
  */
 export async function generateCpfEzpay(db, workspaceId, { month }) {
   if (!/^\d{4}-\d{2}$/.test(String(month || ''))) throw new Error('month must be YYYY-MM')
-  const monthStart = `${month}-01`
   const monthEnd = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).toISOString().slice(0, 10)
 
-  const { data: slips, error } = await db.from('payslips')
-    .select('basic_salary_cents, allowances, additions, overtime_pay_cents, employee_name, staff:staff_id(display_name, nric, date_of_birth, race, residency, cpf_applicable, pr_start_date, hired_on, terminated_on, religion, shg_opt_out, pr_cpf_type)')
-    .eq('workspace_id', workspaceId).neq('status', 'draft')
-    .gte('period_end', monthStart).lte('period_end', monthEnd)
+  const { data: staffRows, error } = await db.from('staff')
+    .select('id, display_name, nric, date_of_birth, race, residency, cpf_applicable, pr_start_date, pr_cpf_type, hired_on, terminated_on, religion, shg_opt_out')
+    .eq('workspace_id', workspaceId)
+    .in('employment_status', ['active', 'terminated'])
   if (error) throw new Error(error.message)
 
   const rows = [CPF_EZPAY_HEADER]
   const skipped = []
-  for (const p of slips || []) {
-    const s = p.staff || {}
-    const name = s.display_name || p.employee_name
+  for (const s of staffRows || []) {
+    const name = s.display_name
     if (s.cpf_applicable === false || s.residency === 'foreigner') { skipped.push({ name, reason: 'not CPF-applicable' }); continue }
     if (!s.nric) { skipped.push({ name, reason: 'missing NRIC' }); continue }
 
-    const ow = (Number(p.basic_salary_cents) || 0) + sum(p.allowances) + (Number(p.overtime_pay_cents) || 0)
-    const aw = sum(p.additions)
+    let earnings
+    try {
+      earnings = await earningsForMonth(db, workspaceId, s.id, month)
+    } catch (e) {
+      skipped.push({ name, reason: e.message })
+      continue
+    }
+    const ow = Number(earnings?.wages?.ordinary_wages_cents) || 0
+    const aw = Number(earnings?.wages?.additional_wages_cents) || 0
+    const gross = Number(earnings?.wages?.gross_cents) || 0
+    if (gross <= 0) {
+      skipped.push({ name, reason: 'zero gross (ineligible / no QR / chicken-out)' })
+      continue
+    }
+
     rows.push([
       s.nric, name, dollars(ow), dollars(aw),
       '', resolveShgAgency(s) || '',

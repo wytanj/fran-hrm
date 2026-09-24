@@ -91,7 +91,7 @@
 
         <div class="mt-4 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
           <h3 class="font-display text-[14px] font-bold text-ink">CPF ezPay + Aspire payout</h3>
-          <p class="mt-1 text-[12px] text-muted">Generate the CPF Board upload file for a month, from that month's issued payslips + staff CPF details.</p>
+          <p class="mt-1 text-[12px] text-muted">Generate CPF ezPay + Aspire from locked prior-month earnings / payroll compute (same path). Issue is separate — for My payslips after payday.</p>
           <div class="mt-2 flex items-center gap-2">
             <input v-model="ezpayMonth" type="month" class="h-9 rounded-md border border-line bg-white px-2.5 text-[13px]">
             <a class="press inline-flex h-9 items-center rounded-md bg-yellow px-3 text-[12.5px] font-semibold text-brown shadow-glow"
