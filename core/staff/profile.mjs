@@ -31,9 +31,11 @@ import {
 } from './fields.mjs'
 import { compactStaff, resolveStaff, resolveStore, STAFF_SELECT } from './query.mjs'
 
-/** Create-time default only. Never applied on employment_type change later. */
+/** Create-time default only. Never applied on employment_type change later.
+ *  Full-time and contractors start Off; part-time stays On. No backfill of existing rows. */
 export function defaultAvailabilityRequired(employmentType) {
-  return String(employmentType || '') !== 'full_time'
+  const t = String(employmentType || '')
+  return t !== 'full_time' && t !== 'contractor'
 }
 
 export function canSeeSensitiveFields(has) {

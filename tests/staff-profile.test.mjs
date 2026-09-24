@@ -73,7 +73,7 @@ test('availability_required is a read-only employment field', () => {
 test('create-time availability_required default follows employment_type', () => {
   assert.equal(defaultAvailabilityRequired('full_time'), false)
   assert.equal(defaultAvailabilityRequired('part_time'), true)
-  assert.equal(defaultAvailabilityRequired('contractor'), true)
+  assert.equal(defaultAvailabilityRequired('contractor'), false)
   assert.equal(defaultAvailabilityRequired(undefined), true)
 })
 
