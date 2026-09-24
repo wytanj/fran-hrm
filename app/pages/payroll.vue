@@ -90,12 +90,14 @@
         </div>
 
         <div class="mt-4 rounded-lg border border-line bg-white p-4 shadow-warm-xs">
-          <h3 class="font-display text-[14px] font-bold text-ink">CPF EZPay template</h3>
+          <h3 class="font-display text-[14px] font-bold text-ink">CPF ezPay + Aspire payout</h3>
           <p class="mt-1 text-[12px] text-muted">Generate the CPF Board upload file for a month, from that month's issued payslips + staff CPF details.</p>
           <div class="mt-2 flex items-center gap-2">
             <input v-model="ezpayMonth" type="month" class="h-9 rounded-md border border-line bg-white px-2.5 text-[13px]">
             <a class="press inline-flex h-9 items-center rounded-md bg-yellow px-3 text-[12.5px] font-semibold text-brown shadow-glow"
-              :class="!ezpayMonth ? 'pointer-events-none opacity-40' : ''" :href="`/api/v1/payroll/cpf-ezpay?month=${ezpayMonth}`" download>Download CSV</a>
+              :class="!ezpayMonth ? 'pointer-events-none opacity-40' : ''" :href="`/api/v1/payroll/cpf-ezpay?month=${ezpayMonth}`" download>Download CPF ezPay</a>
+            <a class="press inline-flex h-9 items-center rounded-md border border-line bg-white px-3 text-[12.5px] font-semibold text-ink"
+              :class="!ezpayMonth ? 'pointer-events-none opacity-40' : ''" :href="`/api/v1/payroll/aspire?month=${ezpayMonth}`" download>Download Aspire</a>
           </div>
           <p class="mt-1.5 text-[11px] text-muted">Foreigners (CPF-not-applicable) and anyone missing an NRIC are skipped.</p>
         </div>

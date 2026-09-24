@@ -701,6 +701,19 @@ export const toolDefinitions = [
     },
   },
   {
+    name: 'payroll_earnings_month',
+    description:
+      'Month earnings estimate for one staff member (ordinary wages, store OT as additional wages, CPF/SHG/SDL preview). Same JSON shape as the staff pay portal and fran-bird. Finance/HQ, or the staff member themselves. ESTIMATE only — not a payslip.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        staff: STAFF_REF,
+        month: { type: 'string', description: 'YYYY-MM (defaults to current SGT month)' },
+      },
+      required: ['staff'],
+    },
+  },
+  {
     name: 'payroll_settings_get',
     description: 'Read the workspace CPF/EOR pay settings (Singapore). Finance/HQ only. Returns the current config plus who last changed it and when.',
     inputSchema: { type: 'object', properties: {}, required: [] },
@@ -1590,6 +1603,15 @@ export async function handleTool(name, args = {}) {
           staffId: staff.id, periodStart: a.period_start, periodEnd: a.period_end,
           monthlyBasicCents: Number(a.monthly_basic_cents) || 0,
         }))
+      }
+
+      case 'payroll_earnings_month': {
+        requireScope('payroll:process')
+        const staff = await resolveStaff(db(), ws(), a.staff)
+        const month = a.month || new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Singapore', year: 'numeric', month: '2-digit' }).format(new Date())
+        const { earningsForMonth } = await import('../../core/payroll/earnings.mjs')
+        const settings = await getSettings(db(), ws())
+        return jsonResult(await earningsForMonth(db(), ws(), staff.id, month, { settings }))
       }
 
       case 'payroll_settings_get': {
