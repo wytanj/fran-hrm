@@ -1,5 +1,6 @@
-// Download the CPF EZPay upload CSV for a month, generated from the month's
-// payslips + staff CPF fields. payroll:process (finance/HQ).
+// Download the CPF EZPay upload CSV for a month, generated from the earnings
+// engine + staff CPF fields (same path as Aspire). Issue/payslips are separate.
+// payroll:process (finance/HQ).
 // @ts-ignore .mjs shared module
 import { generateCpfEzpay } from '../../../../core/payroll/cpfEzpay.mjs'
 
