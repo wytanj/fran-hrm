@@ -1,11 +1,11 @@
 import { randomInt } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 
-export const POS_PIN_DIGITS = 8
+export const POS_PIN_DIGITS = 5
 export const POS_PIN_TTL_MONTHS = 12
 
 export function generatePosPin() {
-  // 8 digits, allow leading zeros
+  // Allow leading zeros.
   let s = ''
   for (let i = 0; i < POS_PIN_DIGITS; i++) s += String(randomInt(0, 10))
   return s

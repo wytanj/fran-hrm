@@ -9,7 +9,7 @@ function judgmentOk(ctx: any) {
 
 /**
  * SM / area / HQ judgment card: approve | reject | hold.
- * Approve → pos_access + 8-digit PIN + 12m expiry; one-time PIN in response.
+ * Approve → pos_access + 5-digit PIN + 12m expiry; one-time PIN in response.
  */
 export default defineEventHandler(async (event) => {
   const ctx = await requireActor(event)

@@ -10,25 +10,28 @@ import {
   POS_PIN_DIGITS,
 } from '../core/pos-auth/pin.mjs'
 
-test('generatePosPin is exactly 8 digits', () => {
+test('generatePosPin is exactly 5 digits', () => {
+  assert.equal(POS_PIN_DIGITS, 5)
   for (let i = 0; i < 20; i++) {
     const p = generatePosPin()
-    assert.match(p, new RegExp(`^\\d{${POS_PIN_DIGITS}}$`))
+    assert.match(p, /^\d{5}$/)
   }
 })
 
-test('assertPosPinFormat rejects non-8-digit', () => {
-  assert.equal(assertPosPinFormat('12345678'), '12345678')
-  assert.throws(() => assertPosPinFormat('1234'), /exactly 8/)
-  assert.throws(() => assertPosPinFormat('123456789'), /exactly 8/)
-  assert.throws(() => assertPosPinFormat('abcdefgh'), /exactly 8/)
+test('assertPosPinFormat rejects non-5-digit', () => {
+  assert.equal(assertPosPinFormat('12345'), '12345')
+  assert.equal(assertPosPinFormat('04218'), '04218')
+  assert.throws(() => assertPosPinFormat('1234'), /exactly 5/)
+  assert.throws(() => assertPosPinFormat('123456'), /exactly 5/)
+  assert.throws(() => assertPosPinFormat('12345678'), /exactly 5/)
+  assert.throws(() => assertPosPinFormat('abcde'), /exactly 5/)
 })
 
 test('hash + compare round-trip', () => {
-  const pin = '04218765'
+  const pin = '04218'
   const hash = hashPosPin(pin)
   assert.ok(comparePosPin(pin, hash))
-  assert.equal(comparePosPin('00000000', hash), false)
+  assert.equal(comparePosPin('00000', hash), false)
 })
 
 test('pin expiry metadata', () => {
